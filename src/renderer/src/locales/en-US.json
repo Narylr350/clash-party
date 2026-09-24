@@ -215,7 +215,7 @@
   "mcp.port": "Listen Port",
   "mcp.endpoint": "MCP Endpoint",
   "mcp.token": "Access Token",
-  "mcp.opencodeConfig": "opencode MCP Config",
+  "mcp.clientConfig": "MCP Client Config (Generic)",
   "mcp.copy": "Copy",
   "mcp.copied": "Copied",
   "mihomo.title": "Core Settings",

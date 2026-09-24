@@ -159,7 +159,7 @@
   "mcp.port": "监听端口",
   "mcp.endpoint": "MCP 地址",
   "mcp.token": "访问 Token",
-  "mcp.opencodeConfig": "opencode 接入配置",
+  "mcp.clientConfig": "MCP 客户端配置（通用）",
   "mcp.copy": "复制",
   "mcp.copied": "已复制",
   "mihomo.title": "内核设置",

@@ -101,6 +101,8 @@ const validInvokeChannels = [
   'quitWithoutCore',
   // System
   'triggerSysProxy',
+  // MCP
+  'getMcpStatus',
   'checkTunPermissions',
   'grantTunPermissions',
   'manualGrantCorePermition',

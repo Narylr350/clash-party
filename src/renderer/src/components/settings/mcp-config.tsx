@@ -38,11 +38,10 @@ const McpConfig: React.FC = () => {
   }, 500)
 
   const endpoint = `http://127.0.0.1:${mcpPort}/mcp`
-  const opencodeConfig = JSON.stringify(
+  const clientConfig = JSON.stringify(
     {
-      mcp: {
+      mcpServers: {
         'clash-party': {
-          type: 'remote',
           url: endpoint,
           headers: { Authorization: `Bearer ${mcpToken}` }
         }
@@ -106,10 +105,10 @@ const McpConfig: React.FC = () => {
               </Button>
             </div>
           </SettingItem>
-          <SettingItem title={t('mcp.opencodeConfig')}>
+          <SettingItem title={t('mcp.clientConfig')}>
             <div className="flex w-[60%] gap-2">
-              <Input size="sm" readOnly value={opencodeConfig} />
-              <Button size="sm" color="primary" onPress={() => copy(opencodeConfig)}>
+              <Input size="sm" readOnly value={clientConfig} />
+              <Button size="sm" color="primary" onPress={() => copy(clientConfig)}>
                 {t('mcp.copy')}
               </Button>
             </div>
