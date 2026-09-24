@@ -8,6 +8,8 @@ export const DEFAULT_NAMESERVER_POLICY: IAppConfig['nameserverPolicy'] = {}
 
 export const DEFAULT_ENABLE_TRAFFIC_LOGGER = true
 
+export const DEFAULT_MCP_PORT = 18640
+
 export const DEFAULT_USE_SUB_STORE = true
 
 export const DEFAULT_SIDER_ORDER: SiderCardKey[] = [

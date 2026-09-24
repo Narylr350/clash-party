@@ -79,6 +79,7 @@ import {
   showErrorDialog
 } from '../core/manager'
 import { triggerSysProxy } from '../sys/sysproxy'
+import { getMcpStatus } from '../mcp'
 import { checkUpdate, downloadAndInstallUpdate } from '../resolve/autoUpdater'
 import {
   getFilePath,
@@ -430,6 +431,7 @@ const asyncHandlers: Record<string, AsyncFn> = {
 
 const syncHandlers: Record<string, SyncFn> = {
   resetAppConfig,
+  getMcpStatus,
   getFilePath,
   openFile,
   getInterfaces,

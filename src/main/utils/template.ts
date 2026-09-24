@@ -8,6 +8,7 @@ import {
   DEFAULT_MIHOMO_SKIP_AUTH_PREFIXES,
   DEFAULT_MIHOMO_SNIFFER_CONFIG,
   DEFAULT_MIHOMO_TUN_CONFIG,
+  DEFAULT_MCP_PORT,
   DEFAULT_NAMESERVER_POLICY,
   DEFAULT_NETWORK_INFO_CARD_ORDER,
   DEFAULT_SIDER_ORDER,
@@ -83,7 +84,7 @@ export const defaultConfig: IAppConfig = {
   useHotReloadProfile: false,
   hotReloadProfileAutoCloseConnection: false,
   mcpEnabled: true,
-  mcpPort: 18640,
+  mcpPort: DEFAULT_MCP_PORT,
   mcpToken: ''
 }
 

@@ -4,12 +4,12 @@ import { app } from 'electron'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { getAppConfig, patchAppConfig } from '../config'
+import { DEFAULT_MCP_PORT } from '../../shared/appConfig'
 import { createLogger } from '../utils/logger'
 import { registerTools } from './tools'
 
 const mcpLogger = createLogger('Mcp')
 
-export const DEFAULT_MCP_PORT = 18640
 const MCP_PATH = '/mcp'
 const MAX_BODY_BYTES = 1024 * 1024
 

@@ -170,6 +170,8 @@ interface IpcApi {
   quitWithoutCore: () => Promise<void>
   // System
   triggerSysProxy: (enable: boolean) => Promise<void>
+  // MCP
+  getMcpStatus: () => Promise<{ running: boolean; port: number; token: string }>
   checkTunPermissions: () => Promise<boolean>
   grantTunPermissions: () => Promise<void>
   manualGrantCorePermition: () => Promise<void>
@@ -368,6 +370,7 @@ export const {
   quitWithoutCore,
   // System
   triggerSysProxy,
+  getMcpStatus,
   checkTunPermissions,
   grantTunPermissions,
   manualGrantCorePermition,
