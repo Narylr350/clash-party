@@ -19,6 +19,7 @@
 ## 工作规则
 
 - 更新策略：官方更新**仅提示不安装**；维护 = 同步上游 `mihomo-party-org/clash-party` 后重新 `pnpm build:win --x64` 并热替换安装（先退应用与内核，装完重启）。
+- TUN 稳定运行依赖四项配置：`tun.auto-detect-interface: false`、`tun.route-exclude-address`（含 10/8、172.16/12、192.168/16、169.254/16、210.47.178/24）、顶层 `interface-name`（钉园区以太网卡）、`dns.nameserver-policy`（`+.bhu.edu.cn` → 校园 DNS，需同时开 `useNameserverPolicy`）；配置重置后需重新应用，可全部通过 MCP 完成。
 - 主进程（ESM 输出）新增 import 时，包必须在 `dependencies`（用 `pnpm add`）——不在依赖里的包会被打包进 bundle，可能注入 CJS interop shim（`const __dirname = import.meta.dirname`）触发 TDZ 崩溃（已实际发生：zod 未入 deps 导致启动崩溃）。
 - 执行层 skill：`mcp-builder`；未接入 finish 层 skill。
 - 上游 README / docs / CI / changelog 为上游参考，不作为本项目进度事实源；本项目不维护上游 README/changelog。
