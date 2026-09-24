@@ -67,6 +67,7 @@
   "core.highPrivilege.message": "A high-privilege core is detected. The application needs to restart in administrator mode to match permissions. Restart now?",
   "common.updater.versionReady": "v{{version}} Version Ready",
   "common.updater.goToDownload": "Go to Download",
+  "common.updater.forkNotice": "A new official release is available. This is a self-built fork — installing the official update would overwrite fork changes (built-in MCP, etc.). Sync upstream and rebuild to update.",
   "common.updater.update": "Update",
   "common.updater.verifying": "Verifying...",
   "common.generateSecret": "Generate Secret",

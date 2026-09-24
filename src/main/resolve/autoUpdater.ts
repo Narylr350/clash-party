@@ -1,18 +1,6 @@
-import { copyFile, rm, writeFile } from 'fs/promises'
-import path from 'path'
-import { existsSync } from 'fs'
-import os from 'os'
-import { exec, execSync, spawn } from 'child_process'
-import { promisify } from 'util'
-import { createHash } from 'crypto'
-import { app, shell } from 'electron'
-import i18next from 'i18next'
-import { mainWindow } from '../window'
-import { appLogger } from '../utils/logger'
-import { dataDir, exeDir, exePath, isPortable, resourcesFilesDir } from '../utils/dirs'
+import { app } from 'electron'
 import { getAppConfig, getControledMihomoConfig } from '../config'
 import { DEFAULT_MIHOMO_PORTS } from '../../shared/appConfig'
-import { checkAdminPrivileges } from '../core/manager'
 import { parse } from '../utils/yaml'
 import * as chromeRequest from '../utils/chromeRequest'
 
@@ -22,17 +10,6 @@ const GITHUB_PROXIES = [
   'https://down.clashparty.org',
   'https://download.mihomo.party'
 ]
-
-let updateInstallPromise: Promise<void> | undefined
-
-interface GitHubReleaseAsset {
-  name: string
-  digest?: string
-}
-
-interface GitHubRelease {
-  assets?: GitHubReleaseAsset[]
-}
 
 function buildDownloadUrls(githubUrl: string, proxyPref = ''): string[] {
   if (proxyPref === 'direct') return [githubUrl]
@@ -64,36 +41,9 @@ async function tryDownload(
 type UpdaterProxy = { protocol: 'http'; host: string; port: number } | false
 
 // 用户关闭混合端口时配置里写的是 0（不是 undefined），解构默认值挡不住。
-// 直接拿 0 去拼代理会打到 127.0.0.1:0，检查更新和下载更新都必然失败，
-// 所以端口未启用时要显式走直连。
+// 直接拿 0 去拼代理会打到 127.0.0.1:0，检查更新必然失败，所以端口未启用时要显式走直连。
 function updaterProxy(mixedPort: number): UpdaterProxy {
   return mixedPort ? { protocol: 'http', host: '127.0.0.1', port: mixedPort } : false
-}
-
-async function getGitHubAssetSha256(
-  version: string,
-  file: string,
-  proxy: UpdaterProxy
-): Promise<string> {
-  const releaseTag = encodeURIComponent(`v${version}`)
-  const res = await chromeRequest.get<GitHubRelease>(
-    `https://api.github.com/repos/mihomo-party-org/mihomo-party/releases/tags/${releaseTag}`,
-    {
-      headers: {
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28'
-      },
-      proxy,
-      timeout: 5000,
-      responseType: 'json'
-    }
-  )
-  const digest = res.data.assets?.find((asset) => asset.name === file)?.digest
-  const match = digest?.match(/^sha256:([a-f\d]{64})$/i)
-  if (!match) {
-    throw new Error(`GitHub Release does not provide a SHA-256 digest for "${file}"`)
-  }
-  return match[1].toLowerCase()
 }
 
 export async function checkUpdate(): Promise<IAppVersion | undefined> {
@@ -137,165 +87,12 @@ function compareVersions(a: string, b: string): number {
   return 0
 }
 
+// 自编译 fork：官方更新只提示、不安装。安装官方包会覆盖 fork 改动（内置 MCP 等）。
+// 维护方式：同步上游后重新 `pnpm build:win --x64` 并重新安装。
 export function downloadAndInstallUpdate(version: string): Promise<void> {
-  if (updateInstallPromise) return updateInstallPromise
-
-  updateInstallPromise = installUpdate(version).catch((error) => {
-    updateInstallPromise = undefined
-    throw error
-  })
-  return updateInstallPromise
-}
-
-async function installUpdate(version: string): Promise<void> {
-  const [{ 'mixed-port': mixedPort = DEFAULT_MIHOMO_PORTS.mixed }, { githubProxy = '' }] =
-    await Promise.all([getControledMihomoConfig(), getAppConfig()])
-  const githubBase = `https://github.com/mihomo-party-org/mihomo-party/releases/download/v${version}/`
-  const fileMap = {
-    'win32-x64': `clash-party-windows-${version}-x64-setup.exe`,
-    'win32-ia32': `clash-party-windows-${version}-ia32-setup.exe`,
-    'win32-arm64': `clash-party-windows-${version}-arm64-setup.exe`,
-    'darwin-x64': `clash-party-macos-${version}-x64.pkg`,
-    'darwin-arm64': `clash-party-macos-${version}-arm64.pkg`
-  }
-  let file = fileMap[`${process.platform}-${process.arch}`]
-  if (isPortable()) {
-    file = file.replace('-setup.exe', '-portable.7z')
-  }
-  if (!file) {
-    throw new Error(i18next.t('common.error.autoUpdateNotSupported'))
-  }
-  if (process.platform === 'win32' && parseInt(os.release()) < 10) {
-    file = file.replace('windows', 'win7')
-  }
-  if (process.platform === 'darwin') {
-    const productVersion = execSync('sw_vers -productVersion', { encoding: 'utf8' })
-      .toString()
-      .trim()
-    if (parseInt(productVersion) < 11) {
-      file = file.replace('macos', 'catalina')
-    }
-  }
-  const proxy = updaterProxy(mixedPort)
-  try {
-    if (!existsSync(path.join(dataDir(), file))) {
-      let expectedHash: string
-      try {
-        expectedHash = await getGitHubAssetSha256(version, file, proxy)
-      } catch (e) {
-        await appLogger.warn(
-          'Failed to get update SHA-256 from GitHub API, falling back to release checksum file',
-          e
-        )
-        const sha256Res = await tryDownload(
-          buildDownloadUrls(`${githubBase}${file}.sha256`, githubProxy),
-          { proxy, responseType: 'text' }
-        )
-        expectedHash = (sha256Res.data as string).trim().split(/\s+/)[0]
-      }
-      // 进度只允许单调递增，避免多代理重试导致进度回退抽搐
-      let lastPercent = -1
-      const res = await tryDownload(buildDownloadUrls(`${githubBase}${file}`, githubProxy), {
-        responseType: 'arraybuffer',
-        timeout: 0,
-        proxy,
-        headers: { 'Content-Type': 'application/octet-stream' },
-        onProgress: (loaded: number, total: number) => {
-          const percent = Math.round((loaded / total) * 100)
-          if (percent <= lastPercent) return
-          lastPercent = percent
-          mainWindow?.webContents.send('updateDownloadProgress', {
-            status: 'downloading',
-            percent
-          })
-        }
-      })
-      mainWindow?.webContents.send('updateDownloadProgress', { status: 'verifying' })
-      const fileBuffer = Buffer.from(res.data as ArrayBuffer)
-      const actualHash = createHash('sha256').update(fileBuffer).digest('hex')
-      if (actualHash.toLowerCase() !== expectedHash.toLowerCase()) {
-        throw new Error(`File integrity check failed: expected ${expectedHash}, got ${actualHash}`)
-      }
-      await writeFile(path.join(dataDir(), file), fileBuffer)
-    }
-    if (file.endsWith('.exe')) {
-      try {
-        const installerPath = path.join(dataDir(), file)
-        const installerArgs = ['/S', '--updated', '--force-run']
-        const isAdmin = await checkAdminPrivileges()
-
-        if (isAdmin) {
-          await appLogger.info('Running installer with existing admin privileges')
-          spawn(installerPath, installerArgs, {
-            detached: true,
-            stdio: 'ignore'
-          }).unref()
-        } else {
-          // 提升权限安装
-          const escapedPath = installerPath.replace(/'/g, "''")
-          const argsString = installerArgs.map((arg) => arg.replace(/'/g, "''")).join("', '")
-
-          const command = `powershell  -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -ArgumentList '${argsString}' -Verb RunAs -WindowStyle Hidden"`
-
-          await appLogger.info('Starting installer with elevated privileges')
-
-          const execPromise = promisify(exec)
-          await execPromise(command, { windowsHide: true })
-
-          await appLogger.info('Installer started successfully with elevation')
-        }
-        app.quit()
-      } catch (installerError) {
-        await appLogger.error('Failed to start installer, trying fallback', installerError)
-
-        // Fallback: 尝试使用 shell.openPath 打开安装包
-        try {
-          await shell.openPath(path.join(dataDir(), file))
-          await appLogger.info('Opened installer with shell.openPath as fallback')
-        } catch (fallbackError) {
-          await appLogger.error('Fallback method also failed', fallbackError)
-          const installerErrorMessage =
-            installerError instanceof Error ? installerError.message : String(installerError)
-          const fallbackErrorMessage =
-            fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
-          throw new Error(
-            `Failed to execute installer: ${installerErrorMessage}. Fallback also failed: ${fallbackErrorMessage}`
-          )
-        }
-      }
-    }
-    if (file.endsWith('.7z')) {
-      await copyFile(path.join(resourcesFilesDir(), '7za.exe'), path.join(dataDir(), '7za.exe'))
-      spawn(
-        'cmd',
-        [
-          '/C',
-          `"timeout /t 2 /nobreak >nul && "${path.join(dataDir(), '7za.exe')}" x -o"${exeDir()}" -y "${path.join(dataDir(), file)}" & start "" "${exePath()}""`
-        ],
-        {
-          shell: true,
-          detached: true
-        }
-      ).unref()
-      app.quit()
-    }
-    if (file.endsWith('.pkg')) {
-      try {
-        const execPromise = promisify(exec)
-        const shell = `installer -pkg ${path.join(dataDir(), file).replace(' ', '\\\\ ')} -target /`
-        const command = `do shell script "${shell}" with administrator privileges`
-        await execPromise(`osascript -e '${command}'`)
-        app.relaunch()
-        app.quit()
-      } catch {
-        shell.openPath(path.join(dataDir(), file))
-      }
-    }
-  } catch (e) {
-    await appLogger.error('Failed to download or install update', e)
-    await rm(path.join(dataDir(), file), { force: true }).catch((removeError) =>
-      appLogger.warn('Failed to remove failed update file', removeError)
+  return Promise.reject(
+    new Error(
+      `fork build: refusing to install official update v${version}; sync upstream and rebuild instead`
     )
-    throw e
-  }
+  )
 }

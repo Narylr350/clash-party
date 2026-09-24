@@ -67,6 +67,7 @@
   "core.highPrivilege.message": "检测到运行中的高权限内核，需以管理员模式重启应用以匹配权限，确定重启？",
   "common.updater.versionReady": "v{{version}} 版本就绪",
   "common.updater.goToDownload": "前往下载",
+  "common.updater.forkNotice": "检测到官方版新版本。本应用为自编译 fork，安装官方更新会覆盖自编译改动（内置 MCP 等）；请同步上游后重新构建安装（可以让 AI 维护）。",
   "common.updater.update": "更新",
   "common.updater.verifying": "正在校验...",
   "common.generateSecret": "生成密钥",
