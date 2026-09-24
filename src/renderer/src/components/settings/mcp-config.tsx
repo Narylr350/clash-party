@@ -17,9 +17,14 @@ const McpConfig: React.FC = () => {
   const [running, setRunning] = useState(false)
 
   useEffect(() => {
-    getMcpStatus()
-      .then((status) => setRunning(status.running))
-      .catch(() => setRunning(false))
+    const refresh = (): void => {
+      getMcpStatus()
+        .then((status) => setRunning(status.running))
+        .catch(() => setRunning(false))
+    }
+    refresh()
+    const timer = setInterval(refresh, 5000)
+    return () => clearInterval(timer)
   }, [mcpEnabled, mcpPort])
 
   const setPort = debounce(async (v: string) => {
