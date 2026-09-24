@@ -18,6 +18,7 @@
 
 ## 工作规则
 
+- 主进程（ESM 输出）新增 import 时，包必须在 `dependencies`（用 `pnpm add`）——不在依赖里的包会被打包进 bundle，可能注入 CJS interop shim（`const __dirname = import.meta.dirname`）触发 TDZ 崩溃（已实际发生：zod 未入 deps 导致启动崩溃）。
 - 执行层 skill：`mcp-builder`；未接入 finish 层 skill。
 - 上游 README / docs / CI / changelog 为上游参考，不作为本项目进度事实源；本项目不维护上游 README/changelog。
 - 未经用户明确要求，不 commit / push / release。
