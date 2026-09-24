@@ -5,6 +5,7 @@ import { app, dialog, ipcMain } from 'electron'
 import i18next from 'i18next'
 import { initI18n } from '../shared/i18n'
 import { registerIpcMainHandlers } from './utils/ipc'
+import { syncMcpServer } from './mcp'
 import { getAppConfig, patchAppConfig, subscribeAppConfig } from './config'
 import {
   beginCoreInitialization,
@@ -306,6 +307,10 @@ app
     })
 
     registerIpcMainHandlers()
+
+    subscribeAppConfig(() => {
+      void syncMcpServer()
+    })
 
     try {
       await createWindow()

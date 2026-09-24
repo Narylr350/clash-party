@@ -4,6 +4,7 @@ import { stat } from 'fs/promises'
 import { existsSync } from 'fs'
 import { app, powerMonitor } from 'electron'
 import { stopCoreForExit, cleanupCoreWatcher } from './core/manager'
+import { stopMcpServer } from './mcp'
 import { primeAdminPrivilegesCache } from './core/admin'
 import { triggerSysProxy, disableSysProxySync } from './sys/sysproxy'
 import { closeTrafficUsage } from './traffic/recorder'
@@ -110,7 +111,11 @@ export function setupAppLifecycle(): void {
         sysProxyDisabled = true
       }
 
-      const cleanupTasks: Promise<unknown>[] = [stopCoreForExit(), closeTrafficUsage()]
+      const cleanupTasks: Promise<unknown>[] = [
+        stopCoreForExit(),
+        closeTrafficUsage(),
+        Promise.resolve(stopMcpServer())
+      ]
       if (process.platform === 'darwin') {
         cleanupTasks.push(
           triggerSysProxy(false, { helperTimeout: 750, force: true }).then(() => {

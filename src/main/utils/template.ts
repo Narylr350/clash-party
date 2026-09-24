@@ -81,7 +81,10 @@ export const defaultConfig: IAppConfig = {
   testProfileOnStart: true,
   coreStartupMode: 'log',
   useHotReloadProfile: false,
-  hotReloadProfileAutoCloseConnection: false
+  hotReloadProfileAutoCloseConnection: false,
+  mcpEnabled: true,
+  mcpPort: 18640,
+  mcpToken: ''
 }
 
 export const defaultControledMihomoConfig: Partial<IMihomoConfig> = {

@@ -429,6 +429,9 @@ interface IAppConfig {
   testProfileOnStart?: boolean
   useHotReloadProfile?: boolean
   hotReloadProfileAutoCloseConnection?: boolean
+  mcpEnabled?: boolean
+  mcpPort?: number
+  mcpToken?: string
 }
 
 interface IMihomoTunConfig {
