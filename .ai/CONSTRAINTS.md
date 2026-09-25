@@ -23,5 +23,5 @@
 - 主进程（ESM 输出）新增 import 时，包必须在 `dependencies`（用 `pnpm add`）——不在依赖里的包会被打包进 bundle，可能注入 CJS interop shim（`const __dirname = import.meta.dirname`）触发 TDZ 崩溃（已实际发生：zod 未入 deps 导致启动崩溃）。
 - 执行层 skill：`mcp-builder`；未接入 finish 层 skill。
 - 上游 README / docs / CI / changelog 为上游参考，不作为本项目进度事实源；本项目不维护上游 README/changelog。
-- 未经用户明确要求，不 commit / push / release。
+- 用户已授权：每轮任务完成且验证通过后，自动提交并推送本轮归属明确的改动。发现历史未提交改动时，先核对归属和完成度；能确认且验证通过的，按独立主题提交推送，不与本轮无关改动混合。归属不明、仍在进行或验证失败的改动保留并说明，不擅自丢弃或推送。发布 release 仍需用户明确要求。
 - Maintenance Surface：`package.json`（依赖/版本）、`electron-builder.yml`（构建配置）。
