@@ -3,9 +3,10 @@ import { getAppConfig, patchAppConfig } from '../config/app'
 import { createLogger } from '../utils/logger'
 
 const log = createLogger('HotspotTun')
-const checkInterval = 10000
+const checkInterval = 2000
 let timer: NodeJS.Timeout | undefined
 let pending: Promise<void> = Promise.resolve()
+let checkPending = false
 let tunDevice = 'Mihomo'
 let tunRunning = false
 let boundTunGuid: string | undefined
@@ -43,7 +44,7 @@ if ($action -eq 'inspect' -or $action -eq 'bind') {
     try {
       $manager = [Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager]::CreateFromConnectionProfile($profile)
       $state.hotspotOn = $manager.TetheringOperationalState.ToString() -eq 'On'
-      break
+      if ($state.hotspotOn) { break }
     } catch { continue }
   }
   if ($action -eq 'bind' -and $state.hotspotOn -and $tun) {
@@ -102,9 +103,9 @@ function serialize(work: () => Promise<void>): Promise<void> {
 }
 
 async function prepare(device: string): Promise<void> {
-  if (process.platform !== 'win32' || !(await getAppConfig()).hotspotTunSharing) return
+  if (process.platform !== 'win32') return
   const state = await run('probe', device)
-  if (!state.physicalGuid) throw new Error('Cannot identify the physical default route')
+  if (!state.physicalGuid) return
   const config = await getAppConfig()
   if (state.forwarding) {
     // Save before touching the adapter, so an application crash cannot lose the original state.
@@ -127,16 +128,27 @@ export function watchHotspotTun(device: string): void {
   tunRunning = true
   if (timer) clearInterval(timer)
   const check = (): void => {
+    if (checkPending) return
+    checkPending = true
     void serialize(async () => {
-      if (!tunRunning || !(await getAppConfig()).hotspotTunSharing) return
+      if (!tunRunning) return
+      // ICS may re-enable forwarding after hotspot startup; a live TUN then captures its own outlet traffic.
       await prepare(tunDevice)
+      if (!(await getAppConfig()).hotspotTunSharing) return
       const state = await run('inspect', tunDevice)
       if (!state.hotspotOn) boundTunGuid = undefined
       if (tunRunning && state.hotspotOn && state.tunGuid && boundTunGuid !== state.tunGuid) {
         await run('bind', tunDevice)
         boundTunGuid = state.tunGuid
       }
-    })
+    }).then(
+      () => {
+        checkPending = false
+      },
+      () => {
+        checkPending = false
+      }
+    )
   }
   check()
   timer = setInterval(check, checkInterval)

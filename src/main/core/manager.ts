@@ -495,7 +495,7 @@ async function prepareCore(detached: boolean, skipStop = false): Promise<CoreCon
     await stopCoreInternal()
   }
   await cleanupSocketFile()
-  if (tun?.enable && appConfig.hotspotTunSharing) {
+  if (tun?.enable) {
     await prepareHotspotTun(tun.device || getDefaultMihomoTunDevice(process.platform))
   }
 
@@ -830,7 +830,7 @@ async function startCoreInternal(detached = false, skipStop = false): Promise<Co
     } catch (error) {
       managerLogger.warn('Failed to sync DNS override state after core start', error)
     }
-    if (config.tunEnabled && (await getAppConfig()).hotspotTunSharing) {
+    if (config.tunEnabled) {
       watchHotspotTun(config.tunDevice)
     }
     return value

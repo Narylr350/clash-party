@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   forwarding: true,
   hotspotOn: true,
   tunGuid: 'tun-1',
-  physicalGuid: 'physical-1'
+  physicalGuid: 'physical-1' as string | undefined
 }))
 
 vi.mock('child_process', () => ({
@@ -70,6 +70,33 @@ describe('Windows TUN hotspot sharing', () => {
     await restoreHotspotForwarding()
     expect(mocks.actions.at(-1)).toBe('restore')
     expect(mocks.config.hotspotForwardingOriginal).toEqual([])
+  })
+
+  it('protects the physical outlet without opting into hotspot rebinding', async () => {
+    mocks.config.hotspotTunSharing = false
+    watchHotspotTun('Mihomo')
+    await vi.waitFor(() => expect(mocks.actions).toContain('disable'))
+    expect(mocks.config.hotspotForwardingOriginal).toEqual(['physical-1'])
+    expect(mocks.actions).not.toContain('bind')
+  })
+
+  it('catches forwarding enabled after the hotspot starts', async () => {
+    mocks.config.hotspotTunSharing = false
+    mocks.forwarding = false
+    watchHotspotTun('Mihomo')
+    await vi.waitFor(() => expect(mocks.actions).toContain('probe'))
+    expect(mocks.actions).not.toContain('disable')
+
+    mocks.forwarding = true
+    watchHotspotTun('Mihomo')
+    await vi.waitFor(() => expect(mocks.actions).toContain('disable'))
+    expect(mocks.actions).not.toContain('bind')
+  })
+
+  it('does not block TUN startup while no physical outlet is available', async () => {
+    mocks.physicalGuid = undefined
+    await expect(prepareHotspotTun('Mihomo')).resolves.toBeUndefined()
+    expect(mocks.actions).toEqual(['probe'])
   })
 
   it('binds only once for a stable hotspot and TUN adapter', async () => {

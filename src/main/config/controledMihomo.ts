@@ -95,11 +95,11 @@ export async function patchControledMihomoConfig(patch: Partial<IMihomoConfig>):
       patch.tun?.device ||
       (await getControledMihomoConfig()).tun?.device ||
       getDefaultMihomoTunDevice(process.platform)
-    if (patch.tun?.enable && appConfig.hotspotTunSharing) await prepareHotspotTun(device)
+    if (patch.tun?.enable) await prepareHotspotTun(device)
     if (appConfig.operationMode === 'simple') {
       const { patchSimpleModules } = await import('../simple/service')
       await patchSimpleModules(patch)
-      if (patch.tun?.enable && appConfig.hotspotTunSharing) watchHotspotTun(device)
+      if (patch.tun?.enable) watchHotspotTun(device)
       if (patch.tun?.enable === false) await restoreHotspotForwarding()
       if (patch['log-level']) await startMihomoLogs()
       return
@@ -179,7 +179,7 @@ export async function patchControledMihomoConfig(patch: Partial<IMihomoConfig>):
     // 优先对运行中内核进行热更新，避免无意义重启
     try {
       await patchMihomoConfig(nextPatch)
-      if (nextPatch.tun?.enable && appConfig.hotspotTunSharing) watchHotspotTun(device)
+      if (nextPatch.tun?.enable) watchHotspotTun(device)
       if (nextPatch.tun?.enable === false) await restoreHotspotForwarding()
     } catch (error) {
       controledMihomoLogger.warn(
