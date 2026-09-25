@@ -354,6 +354,8 @@ interface IAppConfig {
   customSubStoreUrl?: string
   diffWorkDir?: boolean
   autoSetDNS?: boolean
+  hotspotTunSharing?: boolean
+  hotspotForwardingOriginal?: string[]
   originDNS?: string
   useWindowFrame: boolean
   proxyInTray: boolean

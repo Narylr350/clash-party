@@ -8,9 +8,14 @@ import { defaultControledMihomoConfig } from '../utils/template'
 import { deepMerge } from '../utils/merge'
 import { createLogger } from '../utils/logger'
 import { atomicWriteFile, WriteQueue } from '../utils/safeFile'
-import { DEFAULT_CONTROL_DNS, DEFAULT_CONTROL_SNIFF } from '../../shared/appConfig'
+import {
+  DEFAULT_CONTROL_DNS,
+  DEFAULT_CONTROL_SNIFF,
+  getDefaultMihomoTunDevice
+} from '../../shared/appConfig'
 import { SIMPLE_SHARED_CONFIG_KEYS } from '../../shared/simple-config'
 import type { SimpleSharedConfig } from '../simple/compiler'
+import { prepareHotspotTun, restoreHotspotForwarding, watchHotspotTun } from '../sys/hotspotTun'
 import { getAppConfig, patchAppConfig } from './app'
 
 const controledMihomoLogger = createLogger('ControledMihomo')
@@ -86,9 +91,16 @@ export async function getControledMihomoConfig(force = false): Promise<Partial<I
 export async function patchControledMihomoConfig(patch: Partial<IMihomoConfig>): Promise<void> {
   await controledMihomoWriteQueue.run(async () => {
     const appConfig = await getAppConfig()
+    const device =
+      patch.tun?.device ||
+      (await getControledMihomoConfig()).tun?.device ||
+      getDefaultMihomoTunDevice(process.platform)
+    if (patch.tun?.enable && appConfig.hotspotTunSharing) await prepareHotspotTun(device)
     if (appConfig.operationMode === 'simple') {
       const { patchSimpleModules } = await import('../simple/service')
       await patchSimpleModules(patch)
+      if (patch.tun?.enable && appConfig.hotspotTunSharing) watchHotspotTun(device)
+      if (patch.tun?.enable === false) await restoreHotspotForwarding()
       if (patch['log-level']) await startMihomoLogs()
       return
     }
@@ -167,6 +179,8 @@ export async function patchControledMihomoConfig(patch: Partial<IMihomoConfig>):
     // 优先对运行中内核进行热更新，避免无意义重启
     try {
       await patchMihomoConfig(nextPatch)
+      if (nextPatch.tun?.enable && appConfig.hotspotTunSharing) watchHotspotTun(device)
+      if (nextPatch.tun?.enable === false) await restoreHotspotForwarding()
     } catch (error) {
       controledMihomoLogger.warn(
         'Hot patch /configs failed, changes will apply on next restart',

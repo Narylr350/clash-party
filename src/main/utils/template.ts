@@ -68,6 +68,7 @@ export const defaultConfig: IAppConfig = {
   lastSelectedSiderCard: 'proxy',
   siderWidth: 250,
   sysProxy: { enable: false, mode: 'manual' },
+  hotspotTunSharing: false,
   triggerMainWindowBehavior: 'show',
   showMixedPort: DEFAULT_MIHOMO_PORTS.mixed,
   enableMixedPort: true,

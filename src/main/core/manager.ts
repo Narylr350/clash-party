@@ -8,6 +8,13 @@ import os from 'os'
 import { existsSync, watch, type FSWatcher as NodeFSWatcher } from 'fs'
 import chokidar, { type FSWatcher as ChokidarWatcher } from 'chokidar'
 import { app, dialog, ipcMain } from 'electron'
+import { getDefaultMihomoTunDevice } from '../../shared/appConfig'
+import {
+  prepareHotspotTun,
+  restoreHotspotForwarding,
+  stopHotspotTunWatch,
+  watchHotspotTun
+} from '../sys/hotspotTun'
 import { mainWindow } from '../window'
 import {
   getAppConfig,
@@ -424,6 +431,7 @@ interface CoreConfig {
   ipcPath: string
   logLevel: LogLevel
   tunEnabled: boolean
+  tunDevice: string
   autoSetDNS: boolean
   cpuPriority: string
   ageSecretKey?: string
@@ -487,6 +495,9 @@ async function prepareCore(detached: boolean, skipStop = false): Promise<CoreCon
     await stopCoreInternal()
   }
   await cleanupSocketFile()
+  if (tun?.enable && appConfig.hotspotTunSharing) {
+    await prepareHotspotTun(tun.device || getDefaultMihomoTunDevice(process.platform))
+  }
 
   // 设置 DNS
   if (tun?.enable && autoSetDNS) {
@@ -518,6 +529,7 @@ async function prepareCore(detached: boolean, skipStop = false): Promise<CoreCon
     ipcPath,
     logLevel,
     tunEnabled: tun?.enable ?? false,
+    tunDevice: tun?.device || getDefaultMihomoTunDevice(process.platform),
     autoSetDNS,
     cpuPriority: mihomoCpuPriority,
     ageSecretKey,
@@ -818,6 +830,9 @@ async function startCoreInternal(detached = false, skipStop = false): Promise<Co
     } catch (error) {
       managerLogger.warn('Failed to sync DNS override state after core start', error)
     }
+    if (config.tunEnabled && (await getAppConfig()).hotspotTunSharing) {
+      watchHotspotTun(config.tunDevice)
+    }
     return value
   })
   const activeCancel = cancelActiveStartup
@@ -861,6 +876,7 @@ export function startCoreForStartup(): Promise<Promise<void>[]> {
 }
 
 async function stopCoreInternal(force = false, cancelStartup = true): Promise<void> {
+  stopHotspotTunWatch()
   if (!force && process.platform === 'darwin') {
     try {
       await recoverDNS()
@@ -871,8 +887,10 @@ async function stopCoreInternal(force = false, cancelStartup = true): Promise<vo
 
   const stoppedChild = stopCoreProcessAndStreams(cancelStartup)
 
+  let coreExited = false
   try {
     await ensureCoreProcessExited(stoppedChild)
+    coreExited = true
   } catch (error) {
     managerLogger.error(
       `Core PID ${stoppedChild?.pid ?? 'unknown'} refused to exit within ${coreShutdownTimeout}ms`,
@@ -881,6 +899,8 @@ async function stopCoreInternal(force = false, cancelStartup = true): Promise<vo
   }
 
   await cleanupStoppedCoreResources()
+  // A live TUN plus restored physical forwarding can loop all outbound traffic back into mihomo.
+  if (coreExited) await restoreHotspotForwarding()
 }
 
 function stopCoreProcessAndStreams(
@@ -938,11 +958,15 @@ export async function stopCoreForExit(): Promise<void> {
   coreOperationPhase = 'shutting-down'
   cancelAutomaticRestart()
   const stoppedChild = stopCoreProcessAndStreams(true, true)
+  stopHotspotTunWatch()
   await Promise.allSettled([
     recoverDNS({ force: true, timeout: 750 }),
     cleanupStoppedCoreResources(),
     // 确认退出后才撤 watchdog；确认失败时留着它，让它在主进程退出时补 kill -9。
-    ensureCoreProcessExited(stoppedChild).then(() => stopCoreProcessWatchdog(stoppedChild?.pid))
+    ensureCoreProcessExited(stoppedChild).then(async () => {
+      stopCoreProcessWatchdog(stoppedChild?.pid)
+      await restoreHotspotForwarding()
+    })
   ])
 }
 

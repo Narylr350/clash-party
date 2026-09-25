@@ -22,7 +22,7 @@ const Tun: React.FC = () => {
   const { t } = useTranslation()
   const { controledMihomoConfig, patchControledMihomoConfig } = useControledMihomoConfig()
   const { appConfig, patchAppConfig } = useAppConfig()
-  const { autoSetDNS = true } = appConfig || {}
+  const { autoSetDNS = true, hotspotTunSharing = false } = appConfig || {}
   const { tun } = controledMihomoConfig || {}
   const [loading, setLoading] = useState(false)
   const {
@@ -180,6 +180,33 @@ const Tun: React.FC = () => {
               >
                 {t('tun.core.auth')}
               </Button>
+            </SettingItem>
+          )}
+          {platform === 'win32' && (
+            <SettingItem title={t('tun.hotspotSharing')} divider>
+              <Switch
+                size="sm"
+                isSelected={hotspotTunSharing}
+                isDisabled={loading}
+                onValueChange={async (enabled) => {
+                  if (!enabled && tun?.enable) {
+                    showErrorSync(
+                      new Error(t('tun.hotspotDisableHint')),
+                      t('tun.hotspotSharingFailed')
+                    )
+                    return
+                  }
+                  setLoading(true)
+                  try {
+                    await patchAppConfig({ hotspotTunSharing: enabled })
+                    await restartCore()
+                  } catch (error) {
+                    showErrorSync(error, t('tun.hotspotSharingFailed'))
+                  } finally {
+                    setLoading(false)
+                  }
+                }}
+              />
             </SettingItem>
           )}
           {platform === 'darwin' && (

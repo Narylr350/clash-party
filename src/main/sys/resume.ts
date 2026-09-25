@@ -6,6 +6,7 @@ import { mihomoHotReloadConfig, mihomoVersion, patchMihomoConfig } from '../core
 import { getDefaultMihomoTunDevice } from '../../shared/appConfig'
 import { createLogger } from '../utils/logger'
 import { triggerSysProxy } from './sysproxy'
+import { refreshHotspotTun } from './hotspotTun'
 
 const resumeLogger = createLogger('Resume')
 
@@ -71,6 +72,8 @@ export async function recoverAfterResume(): Promise<void> {
       resumeLogger.warn('Core is unreachable after resume, restarting it')
       await restartCore()
     }
+
+    refreshHotspotTun()
 
     const { sysProxy } = await getAppConfig()
     if (sysProxy?.enable) {
