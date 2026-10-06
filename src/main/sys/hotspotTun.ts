@@ -26,7 +26,8 @@ $ProgressPreference = 'SilentlyContinue'
 $request = $env:CLASH_HOTSPOT_REQUEST | ConvertFrom-Json
 $action = $request.action
 $physical = Get-NetAdapter -Physical | Where-Object Status -eq 'Up'
-$route = Get-NetRoute -AddressFamily IPv4 -DestinationPrefix '0.0.0.0/0' |
+$route = Get-NetRoute -AddressFamily IPv4 |
+  Where-Object DestinationPrefix -eq '0.0.0.0/0' |
   Where-Object { $physical.ifIndex -contains $_.InterfaceIndex } |
   Sort-Object RouteMetric
 $outlet = if ($route) { $physical | Where-Object ifIndex -eq $route[0].InterfaceIndex | Select-Object -First 1 } else { $null }
