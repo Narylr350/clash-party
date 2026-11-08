@@ -5,7 +5,7 @@
 - 写入路径：只调用 App 现有函数（`patchAppConfig`、`patchControledMihomoConfig`、核心管理器、`mihomoApi` 等）；不直接读写配置文件、不直连内核写接口。
 - 模块边界：新增 `src/main/mcp/`（服务器与工具）；生命周期在 App 启动/退出时启停；设置页新增独立卡片，不改既有卡片逻辑。
 - 新增依赖：`@modelcontextprotocol/sdk`（经 pnpm 添加，不手改 lockfile）。
-- 交付：Windows 7z 免安装产物，与官方版并存；appId / 名称 / 配置目录不改（共用 `%APPDATA%\mihomo-party`，两版不能同时运行）。
+- 交付：只生成 Windows NSIS 安装包，旧安装包留在 `dist/` 供回滚，不再生成免安装版；appId / 名称 / 配置目录不改（共用 `%APPDATA%\mihomo-party`，不同版本不能同时运行）。
 - Windows 的“代理优先使用无线网络”由客户端出口选择器管理，默认关闭；仅在运行配置生成时绑定节点和代理集合，原始订阅、覆写、受控配置不写入动态网卡名。UI 与 MCP 共用应用层设置入口。
 
-已确认：fork 方案；7z 免安装版并存；只接 mcp-builder skill。
+已确认：fork 方案；只交付安装包、保留旧包回滚；只接 mcp-builder skill。

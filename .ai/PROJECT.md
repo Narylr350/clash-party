@@ -35,7 +35,7 @@
 
 ## Seed Tasks
 
-1. 跑通构建链：`pnpm install` → `pnpm prepare --x64` → `pnpm build:win --x64`，产出 7z 免安装版并启动成功（先不接 MCP）。
+1. 跑通构建链：`pnpm install` → `pnpm prepare --x64` → `pnpm build:win --x64`，产出 Windows 安装包并启动成功（先不接 MCP）；旧安装包保留在 `dist/` 供回滚，不再生成免安装版。
 2. 实现 MCP 服务器模块（`src/main/mcp/`）：Streamable HTTP + token + 工具注册，先接 3 个只读工具（状态/配置/连接）并随 App 启停。
 3. 接入写操作工具：App 设置、内核设置、内核启停/重启、订阅切换、节点切换、系统代理/TUN 开关。
 4. 设置页 MCP 卡片：开关 + 端口 + token（zh-CN/en-US 文案）。

@@ -130,14 +130,8 @@ jobs:
           npm_config_arch: ${{ matrix.arch }}
           npm_config_target_arch: ${{ matrix.arch }}
         run: pnpm build:win --${{ matrix.arch }}
-      - name: Add Portable Flag
-        run: |
-          New-Item -Path "PORTABLE" -ItemType File
-          Get-ChildItem dist/*portable.7z | ForEach-Object {
-            7z a $_.FullName PORTABLE
-          }
       - name: Generate checksums
-        run: pnpm checksum setup.exe portable.7z
+        run: pnpm checksum setup.exe
       - name: Copy Legacy Artifacts
         run: pnpm copy-legacy
       - name: Upload Artifacts
@@ -148,7 +142,6 @@ jobs:
           path: |
             dist/*.sha256
             dist/*setup.exe
-            dist/*portable.7z
           if-no-files-found: error
       - name: Publish Release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -157,7 +150,6 @@ jobs:
           files: |
             dist/*.sha256
             dist/*setup.exe
-            dist/*portable.7z
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Dev Release
         if: github.event_name == 'workflow_dispatch'
@@ -167,7 +159,6 @@ jobs:
           files: |
             dist/*.sha256
             dist/*setup.exe
-            dist/*portable.7z
           prerelease: true
           draft: false
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -219,14 +210,8 @@ jobs:
           npm_config_target_arch: ${{ matrix.arch }}
           LEGACY_BUILD: 'true'
         run: pnpm build:win --${{ matrix.arch }}
-      - name: Add Portable Flag
-        run: |
-          New-Item -Path "PORTABLE" -ItemType File
-          Get-ChildItem dist/*portable.7z | ForEach-Object {
-            7z a $_.FullName PORTABLE
-          }
       - name: Generate checksums
-        run: pnpm checksum setup.exe portable.7z
+        run: pnpm checksum setup.exe
       - name: Copy Legacy Artifacts
         run: pnpm copy-legacy
       - name: Upload Artifacts
@@ -237,7 +222,6 @@ jobs:
           path: |
             dist/*.sha256
             dist/*setup.exe
-            dist/*portable.7z
           if-no-files-found: error
       - name: Publish Release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -246,7 +230,6 @@ jobs:
           files: |
             dist/*.sha256
             dist/*setup.exe
-            dist/*portable.7z
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Dev Release
         if: github.event_name == 'workflow_dispatch'
@@ -256,7 +239,6 @@ jobs:
           files: |
             dist/*.sha256
             dist/*setup.exe
-            dist/*portable.7z
           prerelease: true
           draft: false
           token: ${{ secrets.GITHUB_TOKEN }}
