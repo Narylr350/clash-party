@@ -44,6 +44,7 @@ import {
 } from './lifecycle'
 import { configureAppPaths } from './utils/dirs'
 import { setTrafficUsageEnabled } from './traffic/recorder'
+import { initializeProxyEgress, stopProxyEgress } from './sys/proxyEgress'
 
 async function getWindowsPowerShellMajorVersion(): Promise<number | null> {
   // 仅 PS 3.0+ 写入 \3\ 键（\1\ 键恒为 2.0，不可用）。
@@ -307,6 +308,7 @@ app
     })
 
     registerIpcMainHandlers()
+    app.on('before-quit', stopProxyEgress)
 
     subscribeAppConfig(() => {
       void syncMcpServer()
@@ -350,10 +352,12 @@ app
       }
 
       try {
+        await initializeProxyEgress(true)
         initCoreWatcher()
         const startPromises = await startCoreForStartup()
         if (startPromises.length > 0) {
           startPromises[0].then(async () => {
+            await initializeProxyEgress()
             await Promise.allSettled([
               initProfileUpdater().catch((e) =>
                 mainLogger.warn('Failed to init profile updater', e)

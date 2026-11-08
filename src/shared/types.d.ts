@@ -355,6 +355,7 @@ interface IAppConfig {
   diffWorkDir?: boolean
   autoSetDNS?: boolean
   hotspotTunSharing?: boolean
+  preferWirelessForProxy?: boolean
   hotspotForwardingOriginal?: string[]
   originDNS?: string
   useWindowFrame: boolean

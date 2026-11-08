@@ -27,7 +27,10 @@ import { decryptAgeContent } from '../utils/age'
 import { DEFAULT_CONTROL_DNS, DEFAULT_CONTROL_SNIFF } from '../../shared/appConfig'
 import { atomicWriteFile } from '../utils/safeFile'
 import { compileSimpleRuntime } from '../simple/service'
+import type { ProxyEgressSelection } from '../../shared/proxyEgress'
+import { applyProxyEgress } from '../sys/proxyEgressPolicy'
 import { evaluateDnsOverrideGuard, type DnsOverrideGuardResult } from './dnsOverrideGuard'
+import { getProxyEgressSelection } from './proxyEgressState'
 
 const factoryLogger = createLogger('Factory')
 const SMART_OVERRIDE_ID = 'smart-core-override'
@@ -45,6 +48,7 @@ interface GenerateProfileOptions {
   globalOverrideIds?: string[]
   outputPath?: string
   updateRuntimeConfig?: boolean
+  egressSelection?: ProxyEgressSelection | null
 }
 
 export interface GenerateProfileResult {
@@ -137,8 +141,10 @@ export async function generateProfile(
   options: GenerateProfileOptions = {}
 ): Promise<GenerateProfileResult> {
   const selectedAppConfig = await getAppConfig()
+  const egressSelection =
+    options.egressSelection !== undefined ? options.egressSelection : getProxyEgressSelection()
   if (selectedAppConfig.operationMode === 'simple') {
-    const result = await compileSimpleRuntime()
+    const result = await compileSimpleRuntime({ outputPath: options.outputPath, egressSelection })
     if (result.errors.length > 0) {
       throw new Error(`简易模式配置无效：\n${result.errors.join('\n')}`)
     }
@@ -206,7 +212,10 @@ export async function generateProfile(
     delete controledMihomoConfig?.dns?.['nameserver-policy']
   }
 
-  const profile = deepMerge(currentProfile, controledMihomoConfig)
+  const profile = applyProxyEgress(
+    deepMerge(currentProfile, controledMihomoConfig),
+    egressSelection
+  )
   // 关闭 DNS 覆写时，如果最终配置没有启用的 DNS 配置，清空 dns-hijack 避免请求被劫持但无法处理
   if (!controlDns && profile.tun && !profile.dns?.enable) {
     profile.tun = { ...profile.tun, 'dns-hijack': [] }

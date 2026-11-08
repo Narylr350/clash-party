@@ -47,6 +47,7 @@ import {
 import { setOperationMode } from '../simple/mode'
 import { triggerSysProxy } from '../sys/sysproxy'
 import { coreLogPath } from '../utils/dirs'
+import { getProxyEgressStatus, setPreferWirelessForProxy } from '../sys/proxyEgress'
 
 type ToolResult = {
   content: { type: 'text'; text: string }[]
@@ -68,6 +69,7 @@ function errorMessage(e: unknown): string {
 const appPatchSchema = z
   .strictObject({
     autoSetDNS: z.boolean().optional(),
+    preferWirelessForProxy: z.boolean().optional(),
     controlSniff: z.boolean().optional(),
     useNameserverPolicy: z.boolean().optional(),
     nameserverPolicy: z.unknown().optional()
@@ -158,6 +160,7 @@ export function registerTools(server: McpServer): void {
           tunEnabled: tun,
           kernelMode: mihomoConfig.mode ?? 'rule',
           operationMode: appConfig.operationMode ?? 'standard',
+          proxyEgress: await getProxyEgressStatus(),
           currentProfile: profile ? { id: profile.id, name: profile.name } : null
         })
       } catch (e) {
@@ -732,7 +735,7 @@ export function registerTools(server: McpServer): void {
     'app_patch_config',
     {
       description:
-        'Update supported DNS and sniffer app settings. Use dedicated tools for operation mode, DNS override and system proxy. Returns the config with credentials redacted.',
+        'Update DNS, sniffer and Windows wireless proxy priority settings through the app. Wireless priority can reconnect proxy traffic. Use dedicated tools for operation mode, DNS override and system proxy. Returns redacted config.',
       inputSchema: { patch: appPatchSchema },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
     },
@@ -747,8 +750,11 @@ export function registerTools(server: McpServer): void {
         if (patch.nameserverPolicy !== undefined && !isNameserverPolicy(patch.nameserverPolicy)) {
           return errorResult('Invalid DNS policy or unsafe key')
         }
-        await patchAppConfig(patch as Partial<IAppConfig>)
+        const { preferWirelessForProxy, ...appPatch } = patch
+        if (Object.keys(appPatch).length) await patchAppConfig(appPatch as Partial<IAppConfig>)
         try {
+          if (preferWirelessForProxy !== undefined)
+            await setPreferWirelessForProxy(preferWirelessForProxy)
           if (patch.nameserverPolicy !== undefined) {
             await patchControledMihomoConfig({
               dns: { 'nameserver-policy': patch.nameserverPolicy }

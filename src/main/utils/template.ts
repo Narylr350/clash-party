@@ -72,6 +72,7 @@ export const defaultConfig: IAppConfig = {
   siderWidth: 250,
   sysProxy: { enable: false, mode: 'manual' },
   hotspotTunSharing: false,
+  preferWirelessForProxy: false,
   triggerMainWindowBehavior: 'show',
   showMixedPort: DEFAULT_MIHOMO_PORTS.mixed,
   enableMixedPort: true,

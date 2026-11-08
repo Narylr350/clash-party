@@ -38,7 +38,9 @@ const mocks = vi.hoisted(() => ({
   mihomoUpdateRuleProviders: vi.fn(),
   mihomoUpdateProxyProviders: vi.fn(),
   mihomoCloseConnection: vi.fn(),
-  mihomoCloseAllConnections: vi.fn()
+  mihomoCloseAllConnections: vi.fn(),
+  setPreferWirelessForProxy: vi.fn(),
+  getProxyEgressStatus: vi.fn()
 }))
 
 vi.mock('electron', () => ({
@@ -51,6 +53,7 @@ vi.mock('../config', () => ({
   getControledMihomoConfig: mocks.getControledMihomoConfig,
   patchControledMihomoConfig: mocks.patchControledMihomoConfig,
   getProfileItem: mocks.getProfileItem,
+  getCurrentProfileItem: mocks.getProfileItem,
   getProfileConfig: mocks.getProfileConfig,
   getProfile: mocks.getProfile,
   addProfileItem: mocks.addProfileItem,
@@ -76,11 +79,18 @@ vi.mock('../core/mihomoApi', () => ({
   mihomoUpdateRuleProviders: mocks.mihomoUpdateRuleProviders,
   mihomoUpdateProxyProviders: mocks.mihomoUpdateProxyProviders,
   mihomoCloseConnection: mocks.mihomoCloseConnection,
-  mihomoCloseAllConnections: mocks.mihomoCloseAllConnections
+  mihomoCloseAllConnections: mocks.mihomoCloseAllConnections,
+  SysProxyStatus: async () => false,
+  TunStatus: async () => true,
+  mihomoVersion: async () => ({ version: 'test-smart' })
 }))
 vi.mock('../core/dnsOverrideGuard', () => ({ setControlDns: mocks.setControlDns }))
 vi.mock('../simple/mode', () => ({ setOperationMode: mocks.setOperationMode }))
 vi.mock('../sys/sysproxy', () => ({ triggerSysProxy: mocks.triggerSysProxy }))
+vi.mock('../sys/proxyEgress', () => ({
+  setPreferWirelessForProxy: mocks.setPreferWirelessForProxy,
+  getProxyEgressStatus: mocks.getProxyEgressStatus
+}))
 vi.mock('../utils/dirs', () => ({ coreLogPath: () => 'core.log' }))
 
 type Result = { content: { type: 'text'; text: string }[]; isError?: boolean }
@@ -124,6 +134,16 @@ beforeEach(() => {
   }
   mihomoConfig = { mode: 'rule', secret: 'core-secret', authentication: ['user:pass'] }
   mocks.getAppConfig.mockImplementation(async () => appConfig)
+  mocks.setPreferWirelessForProxy.mockImplementation(async (enabled: boolean) => {
+    appConfig.preferWirelessForProxy = enabled
+  })
+  mocks.getProxyEgressStatus.mockResolvedValue({
+    enabled: false,
+    phase: 'disabled',
+    proxyInterface: null,
+    directInterface: null,
+    error: null
+  })
   mocks.patchAppConfig.mockImplementation(async (patch: Record<string, unknown>) => {
     Object.assign(appConfig, patch)
   })
@@ -176,6 +196,46 @@ beforeEach(() => {
 })
 
 describe('MCP configuration tools', () => {
+  it('accepts a boolean wireless preference and applies it through the shared setting entry point', async () => {
+    const schema = tools.get('app_patch_config')?.schema.patch
+    expect(schema?.safeParse({ preferWirelessForProxy: true }).success).toBe(true)
+    expect(schema?.safeParse({ preferWirelessForProxy: 'true' }).success).toBe(false)
+    appConfig.operationMode = 'simple'
+    const result = await call('app_patch_config', { patch: { preferWirelessForProxy: true } })
+    expect(result.isError).not.toBe(true)
+    expect(mocks.setPreferWirelessForProxy).toHaveBeenCalledWith(true)
+    expect(mocks.patchAppConfig).not.toHaveBeenCalled()
+    expect(mocks.mihomoHotReloadConfig).not.toHaveBeenCalled()
+    expect(mocks.send).toHaveBeenCalledWith('appConfigUpdated')
+    expect(JSON.parse(result.content[0].text).preferWirelessForProxy).toBe(true)
+  })
+
+  it('reports wireless setting failure without bypassing the application transaction', async () => {
+    mocks.setPreferWirelessForProxy.mockRejectedValueOnce(new Error('Candidate rejected'))
+    const result = await call('app_patch_config', { patch: { preferWirelessForProxy: true } })
+    expect(result.isError).toBe(true)
+    expect(mocks.patchAppConfig).not.toHaveBeenCalled()
+    expect(appConfig.preferWirelessForProxy).toBeUndefined()
+  })
+
+  it('includes actual egress selection in status without exposing credentials', async () => {
+    mocks.getProxyEgressStatus.mockResolvedValue({
+      enabled: true,
+      phase: 'wireless',
+      proxyInterface: 'Wi-Fi',
+      directInterface: 'Ethernet',
+      error: null
+    })
+    const result = await call('app_get_status')
+    expect(result.isError).not.toBe(true)
+    expect(JSON.parse(result.content[0].text).proxyEgress).toMatchObject({
+      phase: 'wireless',
+      proxyInterface: 'Wi-Fi',
+      directInterface: 'Ethernet'
+    })
+    expect(result.content[0].text).not.toContain('secret')
+  })
+
   it('redacts credentials from app and core reads without changing in-memory config', async () => {
     const appResult = JSON.parse((await call('app_get_config')).content[0].text)
     const coreResult = JSON.parse((await call('app_get_mihomo_config')).content[0].text)

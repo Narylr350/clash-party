@@ -197,6 +197,8 @@ interface IpcApi {
   openUWPTool: () => Promise<void>
   setupFirewall: () => Promise<void>
   getInterfaces: () => Promise<Record<string, NetworkInterfaceInfo[]>>
+  getProxyEgressStatus: () => Promise<import('../../../shared/proxyEgress').ProxyEgressStatus>
+  setPreferWirelessForProxy: (enabled: boolean) => Promise<void>
   setNativeTheme: (theme: 'system' | 'light' | 'dark') => Promise<void>
   copyEnv: (type: 'bash' | 'cmd' | 'powershell' | 'fish' | 'nushell') => Promise<void>
   // Update
@@ -400,6 +402,8 @@ export const {
   openUWPTool,
   setupFirewall,
   getInterfaces,
+  getProxyEgressStatus,
+  setPreferWirelessForProxy,
   setNativeTheme,
   copyEnv,
   // Update

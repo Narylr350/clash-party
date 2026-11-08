@@ -441,9 +441,12 @@ export const mihomoUpgradeUI = async (): Promise<void> => {
   return await instance.post('/upgrade/ui')
 }
 
-export const mihomoHotReloadConfig = async (): Promise<void> => {
+export const mihomoHotReloadConfig = async (
+  options: { allowRestart?: boolean } = {}
+): Promise<void> => {
   mihomoApiLogger.info('mihomoHotReloadConfig called')
   if (!hasCoreProcess()) {
+    if (options.allowRestart === false) throw new Error('Core is not running')
     mihomoApiLogger.warn('Core is not running, restarting core instead of hot reload')
     await restartCore()
     return
@@ -460,7 +463,7 @@ export const mihomoHotReloadConfig = async (): Promise<void> => {
   try {
     await instance.put('/configs?force=true', { path: configPath })
   } catch (error) {
-    if (hasCoreProcess()) throw error
+    if (hasCoreProcess() || options.allowRestart === false) throw error
     mihomoApiLogger.warn('Core exited before hot reload completed, restarting core', error)
     await restartCore()
     return

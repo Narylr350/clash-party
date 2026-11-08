@@ -364,7 +364,9 @@ export async function exportSimpleConfig(): Promise<SimplePreview & { path?: str
   await atomicWriteFile(filePath, preview.yaml, { encoding: 'utf8' })
   return { ...preview, path: filePath }
 }
-export async function compileSimpleRuntime(): Promise<SimplePreview> {
+export async function compileSimpleRuntime(
+  options: Parameters<typeof compileAndWriteSimple>[3] = {}
+): Promise<SimplePreview> {
   const state = await getSimpleState()
   const shared = await getSharedConfig()
   const next = {
@@ -372,7 +374,7 @@ export async function compileSimpleRuntime(): Promise<SimplePreview> {
     draft: applySharedModules(state.draft, shared),
     published: applySharedModules(state.published, shared)
   }
-  return compileAndWriteSimple(next, true, shared)
+  return compileAndWriteSimple(next, true, shared, options)
 }
 
 export async function getSimpleRulesEditor(): Promise<SimpleRuleEditor> {

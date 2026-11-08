@@ -18,6 +18,9 @@ import {
   type SimpleState,
   type SimplePreview
 } from '../../shared/simple-config'
+import type { ProxyEgressSelection } from '../../shared/proxyEgress'
+import { getProxyEgressSelection } from '../core/proxyEgressState'
+import { applyProxyEgress } from '../sys/proxyEgressPolicy'
 import { compileSimpleConfig, type SimpleSharedConfig } from './compiler'
 import { resolveSimpleDraft } from './subscriptions'
 import {
@@ -93,7 +96,8 @@ export async function saveSimpleState(state: SimpleState): Promise<void> {
 export async function compileAndWriteSimple(
   state: SimpleState,
   publish: boolean,
-  shared?: SimpleSharedConfig
+  shared?: SimpleSharedConfig,
+  options: { outputPath?: string; egressSelection?: ProxyEgressSelection | null } = {}
 ): Promise<SimplePreview> {
   const effectiveShared = shared ?? (await getSharedConfig())
   const result = compileSimpleConfig(
@@ -102,9 +106,18 @@ export async function compileAndWriteSimple(
   )
   if (result.errors.length) return result
   await mkdir(mihomoWorkDir(), { recursive: true })
-  await atomicWriteFile(simpleOutputPath(), result.yaml, { encoding: 'utf8' })
-  await atomicWriteFile(mihomoWorkConfigPath('work'), result.yaml, { encoding: 'utf8' })
-  return result
+  const selection =
+    options.egressSelection !== undefined ? options.egressSelection : getProxyEgressSelection()
+  const yaml = selection
+    ? stringify(applyProxyEgress(parse(result.yaml) as IMihomoConfig, selection))
+    : result.yaml
+  if (options.outputPath) {
+    await atomicWriteFile(options.outputPath, yaml, { encoding: 'utf8' })
+  } else {
+    await atomicWriteFile(simpleOutputPath(), yaml, { encoding: 'utf8' })
+    await atomicWriteFile(mihomoWorkConfigPath('work'), yaml, { encoding: 'utf8' })
+  }
+  return { ...result, yaml }
 }
 export async function commitSimpleState(
   state: SimpleState,

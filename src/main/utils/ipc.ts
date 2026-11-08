@@ -104,6 +104,7 @@ import {
   reinitScheduler
 } from '../resolve/backup'
 import { getInterfaces } from '../sys/interface'
+import { getProxyEgressStatus, setPreferWirelessForProxy } from '../sys/proxyEgress'
 import {
   closeTrayIcon,
   copyEnv,
@@ -441,6 +442,8 @@ const syncHandlers: Record<string, SyncFn> = {
   getFilePath,
   openFile,
   getInterfaces,
+  getProxyEgressStatus,
+  setPreferWirelessForProxy,
   setNativeTheme,
   getVersion: () => app.getVersion(),
   platform: () => process.platform,

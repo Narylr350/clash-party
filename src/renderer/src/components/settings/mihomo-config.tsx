@@ -17,6 +17,7 @@ import { platform, version } from '@renderer/utils/init'
 import { useTranslation } from 'react-i18next'
 import SettingItem from '../base/base-setting-item'
 import SettingCard from '../base/base-setting-card'
+import ProxyEgressSetting from './proxy-egress-setting'
 
 interface SsidProfileEntry {
   ssid: string
@@ -128,6 +129,7 @@ const MihomoConfig: React.FC = () => {
   }
   return (
     <SettingCard>
+      {platform === 'win32' && <ProxyEgressSetting />}
       <SettingItem title={t('mihomo.userAgent')} divider>
         <Input
           size="sm"

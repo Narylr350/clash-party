@@ -120,6 +120,8 @@ const validInvokeChannels = [
   'openUWPTool',
   'setupFirewall',
   'getInterfaces',
+  'getProxyEgressStatus',
+  'setPreferWirelessForProxy',
   'setNativeTheme',
   'copyEnv',
   // Update

@@ -1,6 +1,7 @@
 import { execFile } from 'child_process'
 import { getAppConfig, patchAppConfig } from '../config/app'
 import { createLogger } from '../utils/logger'
+import { proxyEgressInterfaceNames } from '../core/proxyEgressState'
 
 const log = createLogger('HotspotTun')
 const checkInterval = 2000
@@ -14,6 +15,7 @@ let boundTunGuid: string | undefined
 type NetworkState = {
   physicalGuid?: string
   forwarding?: boolean
+  forwardingGuids?: string[]
   hotspotOn?: boolean
   tunGuid?: string
 }
@@ -36,6 +38,10 @@ $state = @{ physicalGuid = if ($outlet) { $outlet.InterfaceGuid.ToString() } els
 if ($outlet) {
   $state.forwarding = (Get-NetIPInterface -InterfaceIndex $outlet.ifIndex -AddressFamily IPv4).Forwarding -eq 'Enabled'
 }
+$targets = @($physical | Where-Object { $_.Name -in $request.interfaces -or ($outlet -and $_.ifIndex -eq $outlet.ifIndex) })
+$state.forwardingGuids = @(foreach ($target in $targets) {
+  if ((Get-NetIPInterface -InterfaceIndex $target.ifIndex -AddressFamily IPv4).Forwarding -eq 'Enabled') { $target.InterfaceGuid.ToString() }
+})
 if ($action -eq 'inspect' -or $action -eq 'bind') {
   [void][Windows.Networking.Connectivity.NetworkInformation, Windows.Networking.Connectivity, ContentType=WindowsRuntime]
   [void][Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager, Windows.Networking.NetworkOperators, ContentType=WindowsRuntime]
@@ -87,7 +93,15 @@ async function run(action: string, device: string, guid?: string): Promise<Netwo
         windowsHide: true,
         timeout: 45000,
         maxBuffer: 64 * 1024,
-        env: { ...process.env, CLASH_HOTSPOT_REQUEST: JSON.stringify({ action, device, guid }) }
+        env: {
+          ...process.env,
+          CLASH_HOTSPOT_REQUEST: JSON.stringify({
+            action,
+            device,
+            guid,
+            interfaces: proxyEgressInterfaceNames()
+          })
+        }
       },
       (error, output) => (error ? reject(error) : resolve(output))
     )
@@ -106,16 +120,17 @@ function serialize(work: () => Promise<void>): Promise<void> {
 async function prepare(device: string): Promise<void> {
   if (process.platform !== 'win32') return
   const state = await run('probe', device)
-  if (!state.physicalGuid) return
-  const config = await getAppConfig()
-  if (state.forwarding) {
+  const forwardingGuids =
+    state.forwardingGuids ?? (state.forwarding && state.physicalGuid ? [state.physicalGuid] : [])
+  for (const guid of forwardingGuids) {
+    const config = await getAppConfig()
     // Save before touching the adapter, so an application crash cannot lose the original state.
-    if (!config.hotspotForwardingOriginal?.includes(state.physicalGuid)) {
+    if (!config.hotspotForwardingOriginal?.includes(guid)) {
       await patchAppConfig({
-        hotspotForwardingOriginal: [...(config.hotspotForwardingOriginal || []), state.physicalGuid]
+        hotspotForwardingOriginal: [...(config.hotspotForwardingOriginal || []), guid]
       })
     }
-    await run('disable', device, state.physicalGuid)
+    await run('disable', device, guid)
   }
 }
 

@@ -1,4 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
+import { setProxyEgressSelection } from '../core/proxyEgressState'
 import {
   prepareHotspotTun,
   restoreHotspotForwarding,
@@ -12,7 +13,9 @@ const mocks = vi.hoisted(() => ({
   forwarding: true,
   hotspotOn: true,
   tunGuid: 'tun-1',
-  physicalGuid: 'physical-1' as string | undefined
+  physicalGuid: 'physical-1' as string | undefined,
+  forwardingGuids: undefined as string[] | undefined,
+  requests: [] as { action: string; guid?: string; interfaces?: string[] }[]
 }))
 
 vi.mock('child_process', () => ({
@@ -23,7 +26,13 @@ vi.mock('child_process', () => ({
       options: { env: Record<string, string> },
       callback: (error: Error | null, stdout?: string, stderr?: string) => void
     ) => {
-      const { action } = JSON.parse(options.env.CLASH_HOTSPOT_REQUEST) as { action: string }
+      const request = JSON.parse(options.env.CLASH_HOTSPOT_REQUEST) as {
+        action: string
+        guid?: string
+        interfaces?: string[]
+      }
+      const { action } = request
+      mocks.requests.push(request)
       mocks.actions.push(action)
       if (action === 'disable') mocks.forwarding = false
       if (action === 'restore') mocks.forwarding = true
@@ -31,6 +40,7 @@ vi.mock('child_process', () => ({
         null,
         JSON.stringify({
           physicalGuid: mocks.physicalGuid,
+          forwardingGuids: mocks.forwardingGuids,
           forwarding: mocks.forwarding,
           hotspotOn: mocks.hotspotOn,
           tunGuid: mocks.tunGuid
@@ -57,9 +67,13 @@ describe('Windows TUN hotspot sharing', () => {
     mocks.hotspotOn = true
     mocks.tunGuid = 'tun-1'
     mocks.physicalGuid = 'physical-1'
+    mocks.forwardingGuids = undefined
+    mocks.requests = []
+    setProxyEgressSelection(null)
   })
   afterEach(() => {
     stopHotspotTunWatch()
+    setProxyEgressSelection(null)
     vi.restoreAllMocks()
   })
 
@@ -69,6 +83,41 @@ describe('Windows TUN hotspot sharing', () => {
     expect(mocks.config.hotspotForwardingOriginal).toEqual(['physical-1'])
     await restoreHotspotForwarding()
     expect(mocks.actions.at(-1)).toBe('restore')
+    expect(mocks.config.hotspotForwardingOriginal).toEqual([])
+  })
+
+  it('protects both selected physical outlets and restores each original forwarding state', async () => {
+    const direct = {
+      guid: 'physical-1',
+      name: 'Ethernet',
+      index: 1,
+      kind: 'wired' as const,
+      physical: true,
+      up: true,
+      ipv4: '10.0.0.2',
+      hasDefaultRoute: true,
+      metric: 10
+    }
+    const proxy = {
+      ...direct,
+      guid: 'wireless-1',
+      name: 'Wi-Fi',
+      index: 2,
+      kind: 'wireless' as const,
+      ipv4: '192.168.43.2'
+    }
+    setProxyEgressSelection({ proxy, direct })
+    mocks.forwardingGuids = ['physical-1', 'wireless-1']
+    await prepareHotspotTun('Mihomo')
+    expect(mocks.requests[0].interfaces).toEqual(['Wi-Fi', 'Ethernet'])
+    expect(
+      mocks.requests.filter((item) => item.action === 'disable').map((item) => item.guid)
+    ).toEqual(['physical-1', 'wireless-1'])
+    expect(mocks.config.hotspotForwardingOriginal).toEqual(['physical-1', 'wireless-1'])
+    await restoreHotspotForwarding()
+    expect(
+      mocks.requests.filter((item) => item.action === 'restore').map((item) => item.guid)
+    ).toEqual(['physical-1', 'wireless-1'])
     expect(mocks.config.hotspotForwardingOriginal).toEqual([])
   })
 
