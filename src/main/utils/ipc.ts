@@ -144,6 +144,10 @@ import {
 } from '../traffic/database'
 import {
   getSimpleConfig,
+  getSimpleNode,
+  createSimpleNodes,
+  saveSimpleNode,
+  removeSimpleNode,
   getSimpleProxyGroup,
   getSimpleRulesEditor,
   saveSimpleRules,
@@ -163,8 +167,7 @@ import {
 import { setOperationMode } from '../simple/mode'
 import { getImageDataURL } from './image'
 import { get as httpGet } from './chromeRequest'
-import { getIconDataURL } from './icon'
-import { getAppName } from './appName'
+import { getAppInfo } from './app-info'
 import { logDir, rulePath } from './dirs'
 import { installMihomoCore, getGitHubTags, clearVersionCache } from './github'
 import { atomicWriteFile } from './safeFile'
@@ -328,6 +331,10 @@ const asyncHandlers: Record<string, AsyncFn> = {
   getRuleStr,
   setRuleStr,
   getSimpleConfig,
+  getSimpleNode,
+  createSimpleNodes,
+  saveSimpleNode,
+  removeSimpleNode,
   getSimpleProxyGroup,
   getSimpleRulesEditor,
   saveSimpleRules,
@@ -422,8 +429,7 @@ const asyncHandlers: Record<string, AsyncFn> = {
   measureLatency,
   getImageDataURL,
   readImageFileDataURL,
-  getIconDataURL,
-  getAppName,
+  getAppInfo,
   changeLanguage,
   setTitleBarOverlay,
   registerShortcut

@@ -81,6 +81,7 @@ export interface SimpleSubscriptionOptions {
   mode: 'group' | 'nodes'
   prefix?: string
   providerName?: string
+  providerOptions?: SimpleObject
 }
 
 export interface SimpleSource {
@@ -95,6 +96,7 @@ export interface SimpleSource {
   authorization?: string
   ageSecretKey?: string
   proxy?: string
+  providerOptions?: SimpleObject
   extra?: { upload: number; download: number; total: number; expire: number }
   proxies: SimpleObject[]
   updated?: number

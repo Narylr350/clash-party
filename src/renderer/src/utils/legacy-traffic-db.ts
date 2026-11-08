@@ -441,7 +441,12 @@ class LegacyTrafficUsageDatabase {
       migrationId: state.migrationId,
       sequence
     } satisfies MigrationState)
-    if (complete) transaction.objectStore(LEGACY_STORE).clear()
+    // Delete only after the corresponding backend batches have been accepted.
+    // This keeps the migration resumable while preventing LevelDB from
+    // retaining the entire legacy log until the final chunk.
+    if (lastId > 0) {
+      transaction.objectStore(LEGACY_STORE).delete(IDBKeyRange.upperBound(lastId))
+    }
     await transactionComplete(transaction)
     return complete
   }

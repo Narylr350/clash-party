@@ -19,6 +19,7 @@ import type { SimpleRuleEditor } from '../../../../shared/simple-config'
 interface Props {
   index: number | null
   insertAt?: number
+  initialValue?: string
   data: SimpleRuleEditor
   onClose: () => void
   onSaved: () => void
@@ -27,8 +28,9 @@ interface Props {
 const RuleEditorModal: React.FC<Props> = (props) => {
   const { index, data, onClose, onSaved } = props
   const original = index === null ? undefined : data.rules[index]
-  const initial = original
-    ? parseSimpleRule(original)
+  const initialValue = original ?? props.initialValue
+  const initial = initialValue
+    ? parseSimpleRule(initialValue)
     : {
         type: 'DOMAIN-SUFFIX',
         payload: '',

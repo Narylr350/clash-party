@@ -113,19 +113,28 @@ export function compileSimpleConfig(
         if (!Number.isSafeInteger(source.interval) || source.interval < 0)
           errors.push(`订阅 ${source.name}: 更新间隔必须是非负整数`)
         providers[source.name] = {
+          ...(source.ageSecretKey ? { 'age-secret-key': source.ageSecretKey } : {}),
+          ...(source.proxy ? { proxy: source.proxy } : {}),
+          ...structuredClone(source.providerOptions || {}),
           type: 'http',
           url: source.url,
           interval: source.interval,
-          ...(source.ageSecretKey ? { 'age-secret-key': source.ageSecretKey } : {}),
-          ...(source.proxy ? { proxy: source.proxy } : {}),
-          override: { 'additional-prefix': source.prefix },
+          override: {
+            ...(isObject(source.providerOptions?.override) ? source.providerOptions.override : {}),
+            'additional-prefix': source.prefix
+          },
           header: {
             ...(source.userAgent ? { 'User-Agent': [source.userAgent] } : {}),
-            ...(source.authorization ? { Authorization: [source.authorization] } : {})
+            ...(source.authorization ? { Authorization: [source.authorization] } : {}),
+            ...(isObject(source.providerOptions?.header) ? source.providerOptions.header : {})
           }
         }
       } else if (source.mode === 'inline')
-        providers[source.name] = { type: 'inline', payload: nodes }
+        providers[source.name] = {
+          ...structuredClone(source.providerOptions || {}),
+          type: 'inline',
+          payload: nodes
+        }
       else errors.push(`未知导入方式: ${source.mode}`)
     }
   }

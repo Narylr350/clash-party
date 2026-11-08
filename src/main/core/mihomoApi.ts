@@ -236,9 +236,21 @@ export const mihomoCloseConnection = async (id: string): Promise<void> => {
   return await instance.delete(`/connections/${encodeURIComponent(id)}`)
 }
 
-export const mihomoCloseAllConnections = async (): Promise<void> => {
+export const mihomoCloseAllConnections = async (group?: string): Promise<void> => {
   const instance = await getAxios()
-  return await instance.delete('/connections')
+  if (!group) {
+    return await instance.delete('/connections')
+  }
+
+  const connections = await instance.get<never, IMihomoConnectionsInfo>('/connections')
+  const targets = (connections.connections || []).filter(({ chains }) => chains.includes(group))
+  for (let i = 0; i < targets.length; i += 20) {
+    await Promise.all(
+      targets
+        .slice(i, i + 20)
+        .map(({ id }) => instance.delete(`/connections/${encodeURIComponent(id)}`))
+    )
+  }
 }
 
 export const mihomoRules = async (): Promise<IMihomoRulesInfo> => {

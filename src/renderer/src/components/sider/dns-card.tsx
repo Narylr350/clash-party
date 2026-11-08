@@ -1,9 +1,9 @@
-import { Button, Card, CardBody, CardFooter, Spinner, Tooltip } from '@heroui/react'
+import { Button, Card, CardBody, CardFooter } from '@heroui/react'
 import { toast } from '@renderer/components/base/toast'
 import BorderSwitch from '@renderer/components/base/border-switch'
 import BaseConfirmModal from '@renderer/components/base/base-confirm-modal'
 import { LuServer } from 'react-icons/lu'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { patchControledMihomoConfig, setControlDns, getSimpleConfig } from '@renderer/utils/ipc'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -12,9 +12,11 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { DEFAULT_CONTROL_DNS } from '../../../../shared/appConfig'
+import SiderItem from './sider-item'
 
 interface Props {
   iconOnly?: boolean
+  expanded?: boolean
 }
 const DNSCard: React.FC<Props> = (props) => {
   const { t } = useTranslation()
@@ -23,7 +25,7 @@ const DNSCard: React.FC<Props> = (props) => {
     appConfig?.operationMode === 'simple' ? 'getSimpleConfig' : null,
     getSimpleConfig
   )
-  const { iconOnly } = props
+  const { iconOnly, expanded } = props
   const [applying, setApplying] = useState(false)
   // 弹窗保存待确认指纹，开关以后端状态为准。
   const [confirmation, setConfirmation] = useState<string | null>(null)
@@ -34,7 +36,6 @@ const DNSCard: React.FC<Props> = (props) => {
     operationMode = 'standard'
   } = appConfig || {}
   const location = useLocation()
-  const navigate = useNavigate()
   const match = location.pathname.includes('/dns')
   const simpleDnsEnabled = simpleState
     ? !/^enable:\s*false\s*$/m.test(simpleState.published.modules.dns || '')
@@ -73,26 +74,42 @@ const DNSCard: React.FC<Props> = (props) => {
     void apply(controlDns)
   }
 
+  const confirmationModal = (
+    <BaseConfirmModal
+      isOpen={confirmation !== null}
+      title={t('dns.overrideGuard.confirmTitle')}
+      content={t('dns.overrideGuard.confirmContent')}
+      cancelText={t('dns.overrideGuard.keepOff')}
+      confirmText={t('dns.overrideGuard.enableAnyway')}
+      isLoading={applying}
+      onCancel={() => {
+        if (!applying) setConfirmation(null)
+      }}
+      onConfirm={() => {
+        if (confirmation) void apply(true, confirmation)
+      }}
+    />
+  )
+
   if (iconOnly) {
     return (
-      <div className={`${dnsCardStatus} flex justify-center`}>
-        <Tooltip
-          content={operationMode === 'simple' ? 'DNS' : t('sider.cards.dns')}
-          placement="right"
+      <>
+        <SiderItem
+          className={dnsCardStatus}
+          title={operationMode === 'simple' ? 'DNS' : t('sider.cards.dns')}
+          route="/dns"
+          icon={<LuServer className="text-[20px]" />}
+          expanded={expanded}
         >
-          <Button
-            size="sm"
-            isIconOnly
-            color={match ? 'primary' : 'default'}
-            variant={match ? 'solid' : 'light'}
-            onPress={() => {
-              navigate('/dns')
-            }}
-          >
-            <LuServer className="text-[20px]" />
-          </Button>
-        </Tooltip>
-      </div>
+          <BorderSwitch
+            aria-label={operationMode === 'simple' ? 'DNS' : t('sider.cards.dns')}
+            isShowBorder={match && (operationMode === 'simple' ? simpleDnsEnabled : controlDns)}
+            isSelected={operationMode === 'simple' ? simpleDnsEnabled : controlDns}
+            onValueChange={onChange}
+          />
+        </SiderItem>
+        {confirmationModal}
+      </>
     )
   }
 
@@ -125,15 +142,11 @@ const DNSCard: React.FC<Props> = (props) => {
                 className={`${match ? 'text-primary-foreground' : 'text-foreground'} text-[24px] font-bold`}
               />
             </Button>
-            <div className="flex items-center">
-              {applying && <Spinner size="sm" color={match ? 'white' : 'primary'} />}
-              <BorderSwitch
-                isShowBorder={match && (operationMode === 'simple' ? simpleDnsEnabled : controlDns)}
-                isSelected={operationMode === 'simple' ? simpleDnsEnabled : controlDns}
-                isDisabled={applying}
-                onValueChange={onChange}
-              />
-            </div>
+            <BorderSwitch
+              isShowBorder={match && (operationMode === 'simple' ? simpleDnsEnabled : controlDns)}
+              isSelected={operationMode === 'simple' ? simpleDnsEnabled : controlDns}
+              onValueChange={onChange}
+            />
           </div>
         </CardBody>
         <CardFooter className="pt-1">
@@ -144,20 +157,7 @@ const DNSCard: React.FC<Props> = (props) => {
           </h3>
         </CardFooter>
       </Card>
-      <BaseConfirmModal
-        isOpen={confirmation !== null}
-        title={t('dns.overrideGuard.confirmTitle')}
-        content={t('dns.overrideGuard.confirmContent')}
-        cancelText={t('dns.overrideGuard.keepOff')}
-        confirmText={t('dns.overrideGuard.enableAnyway')}
-        isLoading={applying}
-        onCancel={() => {
-          if (!applying) setConfirmation(null)
-        }}
-        onConfirm={() => {
-          if (confirmation) void apply(true, confirmation)
-        }}
-      />
+      {confirmationModal}
     </div>
   )
 }

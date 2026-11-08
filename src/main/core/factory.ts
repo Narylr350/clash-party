@@ -168,6 +168,7 @@ export async function generateProfile(
   const {
     diffWorkDir = false,
     controlDns: controlDnsSetting = DEFAULT_CONTROL_DNS,
+    disableDnsOverrideGuard = false,
     controlSniff = DEFAULT_CONTROL_SNIFF,
     useNameserverPolicy
   } = appConfig
@@ -176,7 +177,8 @@ export async function generateProfile(
     profileId ?? 'default',
     baseProfile,
     controlDnsSetting,
-    options.updateRuntimeConfig !== false
+    options.updateRuntimeConfig !== false,
+    !disableDnsOverrideGuard
   )
   const { controlDns } = dnsGuard
   const profileWithNormalOverride = await applyOverrides(

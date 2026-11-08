@@ -24,7 +24,7 @@ interface IpcApi {
   // Mihomo API
   mihomoVersion: () => Promise<IMihomoVersion>
   mihomoCloseConnection: (id: string) => Promise<void>
-  mihomoCloseAllConnections: () => Promise<void>
+  mihomoCloseAllConnections: (group?: string) => Promise<void>
   mihomoRules: () => Promise<IMihomoRulesInfo>
   mihomoRulesDisable: (rules: Record<string, boolean>) => Promise<void>
   mihomoProxies: () => Promise<IMihomoProxies>
@@ -104,6 +104,19 @@ interface IpcApi {
   getRuleStr: (id: string) => Promise<string>
   setRuleStr: (id: string, str: string) => Promise<void>
   getSimpleConfig: () => Promise<import('../../../shared/simple-config').SimpleState>
+  getSimpleNode: (name?: string) => Promise<import('../../../shared/simple-config').SimpleObject>
+  createSimpleNodes: (
+    values: import('../../../shared/simple-config').SimpleObject[]
+  ) => Promise<void>
+  saveSimpleNode: (
+    name: string,
+    value: import('../../../shared/simple-config').SimpleObject,
+    expected: import('../../../shared/simple-config').SimpleObject
+  ) => Promise<void>
+  removeSimpleNode: (
+    name: string,
+    expected: import('../../../shared/simple-config').SimpleObject
+  ) => Promise<void>
   getSimpleRulesEditor: () => Promise<import('../../../shared/simple-config').SimpleRuleEditor>
   saveSimpleRules: (
     change: import('../../../shared/simple-config').SimpleRuleChange,
@@ -341,6 +354,10 @@ export const {
   getRuleStr,
   setRuleStr,
   getSimpleConfig,
+  getSimpleNode,
+  createSimpleNodes,
+  saveSimpleNode,
+  removeSimpleNode,
   getSimpleProxyGroup,
   getSimpleRulesEditor,
   saveSimpleRules,
@@ -495,12 +512,6 @@ export function updateTrayIconImmediate(sysProxyEnabled: boolean, tunEnabled: bo
   window.electron.ipcRenderer.invoke('updateTrayIconImmediate', sysProxyEnabled, tunEnabled)
 }
 
-// getAppName: 获取应用程序名称
-export async function getAppName(appPath: string): Promise<string> {
-  return invoke<string>('getAppName', appPath)
-}
-
-// getIconDataURL: 获取应用图标的 Base64 数据
-export async function getIconDataURL(appPath: string): Promise<string> {
-  return invoke<string>('getIconDataURL', appPath)
+export function getAppInfo(metadata: IMihomoConnectionDetail['metadata']): Promise<IAppInfo> {
+  return invoke<IAppInfo>('getAppInfo', metadata)
 }

@@ -243,6 +243,8 @@ export function cleanupSimpleDraft(
   if (next.preserved) cleanupSimpleConfig(next.preserved, removed)
   for (const source of next.sources) {
     if (source.proxy && removed.outbounds.has(source.proxy)) delete source.proxy
+    if (source.providerOptions)
+      cleanupSimpleConfig({ 'proxy-providers': { source: source.providerOptions } }, removed)
     const localNames = new Set(source.proxies.map((node) => node.name))
     for (const node of source.proxies) {
       if (

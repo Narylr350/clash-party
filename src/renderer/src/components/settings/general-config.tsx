@@ -69,6 +69,8 @@ const GeneralConfig: React.FC = () => {
   const [trayIconCropDataURL, setTrayIconCropDataURL] = useState('')
   const [trayIconCropTarget, setTrayIconCropTarget] = useState<TrayIconCropTarget>('custom')
   const [trayIconDrawerOpen, setTrayIconDrawerOpen] = useState(false)
+  const [showWindowFrameConfirm, setShowWindowFrameConfirm] = useState(false)
+  const [pendingWindowFrameValue, setPendingWindowFrameValue] = useState(false)
   const [showHardwareAccelConfirm, setShowHardwareAccelConfirm] = useState(false)
   const [pendingHardwareAccelValue, setPendingHardwareAccelValue] = useState(false)
   const { setTheme } = useTheme()
@@ -82,6 +84,7 @@ const GeneralConfig: React.FC = () => {
     disableTray = false,
     swapTrayClick = false,
     disableTrayIconColor = false,
+    trayTrafficTextColor = 'auto',
     customTrayIcon = '',
     customTrayIcons = {},
     disableAnimations = false,
@@ -235,6 +238,28 @@ const GeneralConfig: React.FC = () => {
           }}
         />
       )}
+      {showWindowFrameConfirm && (
+        <BaseConfirmModal
+          isOpen={showWindowFrameConfirm}
+          title={t('settings.windowFrame.confirm.title')}
+          content={t('settings.windowFrame.confirm.content')}
+          onCancel={() => {
+            setShowWindowFrameConfirm(false)
+            setPendingWindowFrameValue(false)
+          }}
+          onConfirm={async () => {
+            setShowWindowFrameConfirm(false)
+            setIsRelaunching(true)
+            try {
+              await patchAppConfig({ useWindowFrame: pendingWindowFrameValue })
+              await relaunchApp()
+            } catch (e) {
+              toast.error(String(e))
+              setIsRelaunching(false)
+            }
+          }}
+        />
+      )}
       {trayIconCropDataURL && (
         <TrayIconCropModal
           imageDataURL={trayIconCropDataURL}
@@ -246,11 +271,11 @@ const GeneralConfig: React.FC = () => {
         />
       )}
       <SettingCard>
-        <SettingItem title="配置模式" divider>
+        <SettingItem title={t('settings.operationMode.title')} divider>
           <Select
             className="w-37.5"
             size="sm"
-            aria-label="配置模式"
+            aria-label={t('settings.operationMode.title')}
             isLoading={switchingMode}
             isDisabled={switchingMode}
             disallowEmptySelection
@@ -261,15 +286,16 @@ const GeneralConfig: React.FC = () => {
               setSwitchingMode(true)
               try {
                 await setOperationMode(next)
+                toast.success(t(`settings.operationMode.${next}.success`))
               } catch (error) {
-                toast.error(String(error))
+                toast.error(String(error), t('settings.operationMode.error'))
               } finally {
                 setSwitchingMode(false)
               }
             }}
           >
-            <SelectItem key="standard">标准模式</SelectItem>
-            <SelectItem key="simple">简易模式</SelectItem>
+            <SelectItem key="standard">{t('settings.operationMode.standard.label')}</SelectItem>
+            <SelectItem key="simple">{t('settings.operationMode.simple.label')}</SelectItem>
           </Select>
         </SettingItem>
         <SettingItem title={t('settings.language')} divider>
@@ -576,6 +602,24 @@ const GeneralConfig: React.FC = () => {
                 }}
               />
             </SettingItem>
+            {platform === 'darwin' && showTraffic && (
+              <SettingItem title={t('settings.trayTrafficTextColor')} divider>
+                <Tabs
+                  size="sm"
+                  color="primary"
+                  selectedKey={trayTrafficTextColor}
+                  onSelectionChange={(key) => {
+                    void patchAppConfig({
+                      trayTrafficTextColor: key as 'auto' | 'white' | 'black'
+                    })
+                  }}
+                >
+                  <Tab key="auto" title={t('settings.trayTrafficTextColorAuto')} />
+                  <Tab key="white" title={t('settings.trayTrafficTextColorWhite')} />
+                  <Tab key="black" title={t('settings.trayTrafficTextColorBlack')} />
+                </Tabs>
+              </SettingItem>
+            )}
             <SettingItem
               title={t('settings.customTrayIcon')}
               actions={
@@ -704,17 +748,11 @@ const GeneralConfig: React.FC = () => {
             size="sm"
             isSelected={useWindowFrame}
             isDisabled={isRelaunching}
-            onValueChange={debounce(async (v) => {
+            onValueChange={(v) => {
               if (isRelaunching) return
-              setIsRelaunching(true)
-              try {
-                await patchAppConfig({ useWindowFrame: v })
-                await relaunchApp()
-              } catch (e) {
-                toast.error(String(e))
-                setIsRelaunching(false)
-              }
-            }, 1000)}
+              setPendingWindowFrameValue(v)
+              setShowWindowFrameConfirm(true)
+            }}
           />
         </SettingItem>
         <SettingItem title={t('settings.rememberSelectedSiderCard')} divider>

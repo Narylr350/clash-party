@@ -1,6 +1,6 @@
 import { Button, Card, CardBody, CardFooter, Chip, Progress, Tooltip } from '@heroui/react'
 import { useProfileConfig } from '@renderer/hooks/use-profile-config'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { calcTraffic, calcPercent } from '@renderer/utils/calc'
 import { CgLoadbarDoc } from 'react-icons/cg'
 import { IoMdRefresh } from 'react-icons/io'
@@ -15,6 +15,7 @@ import { TiFolder } from 'react-icons/ti'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { getSimpleConfig } from '@renderer/utils/ipc'
+import SiderItem from './sider-item'
 
 const ConfigViewer = lazy(() => import('./config-viewer'))
 
@@ -23,19 +24,19 @@ dayjs.locale('zh-cn')
 
 interface Props {
   iconOnly?: boolean
+  expanded?: boolean
 }
 
 const ProfileCard: React.FC<Props> = (props) => {
   const { t } = useTranslation()
   const { appConfig, patchAppConfig } = useAppConfig()
-  const { iconOnly } = props
+  const { iconOnly, expanded } = props
   const {
     profileCardStatus = 'col-span-2',
     profileDisplayDate = 'expire',
     disableAnimations = false
   } = appConfig || {}
   const location = useLocation()
-  const navigate = useNavigate()
   const simpleMode = appConfig?.operationMode === 'simple'
   const match = simpleMode
     ? location.pathname === '/simple'
@@ -71,21 +72,13 @@ const ProfileCard: React.FC<Props> = (props) => {
 
   if (iconOnly) {
     return (
-      <div className={`${profileCardStatus} flex justify-center`}>
-        <Tooltip content={simpleMode ? '订阅管理' : t('sider.cards.profiles')} placement="right">
-          <Button
-            size="sm"
-            isIconOnly
-            color={match ? 'primary' : 'default'}
-            variant={match ? 'solid' : 'light'}
-            onPress={() => {
-              navigate(simpleMode ? '/simple' : '/profiles')
-            }}
-          >
-            <TiFolder className="text-[20px]" />
-          </Button>
-        </Tooltip>
-      </div>
+      <SiderItem
+        className={profileCardStatus}
+        title={simpleMode ? '订阅管理' : t('sider.cards.profiles')}
+        route={simpleMode ? '/simple' : '/profiles'}
+        icon={<TiFolder className="text-[20px]" />}
+        expanded={expanded}
+      />
     )
   }
 

@@ -23,6 +23,7 @@ const DNS: React.FC = () => {
     nameserverPolicy,
     useNameserverPolicy = DEFAULT_USE_NAMESERVER_POLICY,
     controlDns = DEFAULT_CONTROL_DNS,
+    disableDnsOverrideGuard = false,
     operationMode = 'standard'
   } = appConfig || {}
   const { dns, hosts } = controledMihomoConfig || {}
@@ -244,6 +245,17 @@ const DNS: React.FC = () => {
               isSelected={values.enable}
               onValueChange={(v) => {
                 setValues({ ...values, enable: v })
+              }}
+            />
+          </SettingItem>
+        )}
+        {operationMode !== 'simple' && (
+          <SettingItem title={t('dns.overrideGuard.disable')} divider>
+            <Switch
+              size="sm"
+              isSelected={disableDnsOverrideGuard}
+              onValueChange={(v) => {
+                void patchAppConfig({ disableDnsOverrideGuard: v })
               }}
             />
           </SettingItem>

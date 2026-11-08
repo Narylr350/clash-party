@@ -1,8 +1,8 @@
-import { Button, Card, CardBody, CardFooter, Tooltip } from '@heroui/react'
+import { Button, Card, CardBody, CardFooter } from '@heroui/react'
 import { toast } from '@renderer/components/base/toast'
 import BorderSwitch from '@renderer/components/base/border-switch'
 import { RiScan2Fill } from 'react-icons/ri'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import {
   mihomoHotReloadConfig,
   patchControledMihomoConfig,
@@ -15,9 +15,11 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { DEFAULT_CONTROL_SNIFF } from '../../../../shared/appConfig'
+import SiderItem from './sider-item'
 
 interface Props {
   iconOnly?: boolean
+  expanded?: boolean
 }
 const SniffCard: React.FC<Props> = (props) => {
   const { t } = useTranslation()
@@ -26,7 +28,7 @@ const SniffCard: React.FC<Props> = (props) => {
     appConfig?.operationMode === 'simple' ? 'getSimpleConfig' : null,
     getSimpleConfig
   )
-  const { iconOnly } = props
+  const { iconOnly, expanded } = props
   const {
     sniffCardStatus = 'col-span-1',
     controlSniff = DEFAULT_CONTROL_SNIFF,
@@ -34,7 +36,6 @@ const SniffCard: React.FC<Props> = (props) => {
     operationMode = 'standard'
   } = appConfig || {}
   const location = useLocation()
-  const navigate = useNavigate()
   const match = location.pathname.includes('/sniffer')
   const {
     attributes,
@@ -66,24 +67,20 @@ const SniffCard: React.FC<Props> = (props) => {
 
   if (iconOnly) {
     return (
-      <div className={`${sniffCardStatus} flex justify-center`}>
-        <Tooltip
-          content={operationMode === 'simple' ? '嗅探' : t('sider.cards.sniff')}
-          placement="right"
-        >
-          <Button
-            size="sm"
-            isIconOnly
-            color={match ? 'primary' : 'default'}
-            variant={match ? 'solid' : 'light'}
-            onPress={() => {
-              navigate('/sniffer')
-            }}
-          >
-            <RiScan2Fill className="text-[20px]" />
-          </Button>
-        </Tooltip>
-      </div>
+      <SiderItem
+        className={sniffCardStatus}
+        title={operationMode === 'simple' ? '嗅探' : t('sider.cards.sniff')}
+        route="/sniffer"
+        icon={<RiScan2Fill className="text-[20px]" />}
+        expanded={expanded}
+      >
+        <BorderSwitch
+          aria-label={operationMode === 'simple' ? '嗅探' : t('sider.cards.sniff')}
+          isShowBorder={match && (operationMode === 'simple' ? simpleSnifferEnabled : controlSniff)}
+          isSelected={operationMode === 'simple' ? simpleSnifferEnabled : controlSniff}
+          onValueChange={onChange}
+        />
+      </SiderItem>
     )
   }
 

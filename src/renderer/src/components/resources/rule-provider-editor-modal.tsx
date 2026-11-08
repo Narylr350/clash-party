@@ -9,11 +9,12 @@ import {
   Select,
   SelectItem,
   Tab,
-  Tabs,
-  Textarea
+  Tabs
 } from '@heroui/react'
 import React, { useState } from 'react'
 import { saveSimpleRuleProvider } from '@renderer/utils/ipc'
+import { FaPlus } from 'react-icons/fa6'
+import { MdDeleteOutline } from 'react-icons/md'
 import type { SimpleObject, SimpleRuleEditor } from '../../../../shared/simple-config'
 
 interface Props {
@@ -31,13 +32,34 @@ const RuleProviderEditorModal: React.FC<Props> = (props) => {
       : data.ruleProviders[name]
   const [values, setValues] = useState<SimpleObject>(() => structuredClone(initial || {}))
   const [nextName, setNextName] = useState(name || '')
-  const [payload, setPayload] = useState(() =>
-    Array.isArray(initial?.payload) ? initial.payload.join('\n') : ''
+  const [payload, setPayload] = useState<string[]>(() =>
+    Array.isArray(initial?.payload) ? initial.payload.map((value) => String(value)) : []
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const type = String(values.type || 'http')
   const behavior = String(values.behavior || 'domain')
+  const classicalRuleTypes = [
+    'DOMAIN',
+    'DOMAIN-SUFFIX',
+    'DOMAIN-KEYWORD',
+    'DOMAIN-REGEX',
+    'GEOIP',
+    'IP-CIDR',
+    'IP-CIDR6',
+    'SRC-IP-CIDR',
+    'SRC-PORT',
+    'DST-PORT',
+    'PROCESS-NAME',
+    'PROCESS-PATH',
+    'NETWORK'
+  ]
+  const splitClassicalRule = (rule: string): { type: string; value: string } => {
+    const separator = rule.indexOf(',')
+    if (separator < 0) return { type: 'DOMAIN', value: rule }
+    const ruleType = rule.slice(0, separator).trim().toUpperCase()
+    return { type: ruleType, value: rule.slice(separator + 1) }
+  }
   const set = (key: string, value: unknown): void =>
     setValues((current) => {
       const next = { ...current }
@@ -88,10 +110,7 @@ const RuleProviderEditorModal: React.FC<Props> = (props) => {
         } else {
           delete value.path
           delete value.format
-          value.payload = payload
-            .split('\n')
-            .map((line) => line.trim())
-            .filter(Boolean)
+          value.payload = payload.map((line) => line.trim()).filter(Boolean)
         }
       }
       if (value.format === 'mrs' && behavior === 'classical')
@@ -193,14 +212,88 @@ const RuleProviderEditorModal: React.FC<Props> = (props) => {
                     </div>
                   )}
                   {type === 'inline' && (
-                    <Textarea
-                      size="sm"
-                      className="sm:col-span-2 font-mono"
-                      label="规则内容"
-                      minRows={6}
-                      value={payload}
-                      onValueChange={setPayload}
-                    />
+                    <div className="sm:col-span-2 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-foreground-500">规则列表</span>
+                        <Button
+                          size="sm"
+                          variant="flat"
+                          startContent={<FaPlus />}
+                          onPress={() => setPayload((current) => [...current, ''])}
+                        >
+                          添加规则
+                        </Button>
+                      </div>
+                      <div className="space-y-2 rounded-medium bg-default-100 p-2">
+                        {payload.length === 0 && (
+                          <div className="py-3 text-center text-sm text-foreground-400">
+                            暂无规则
+                          </div>
+                        )}
+                        {payload.map((rule, index) => {
+                          const classical =
+                            behavior === 'classical' ? splitClassicalRule(rule) : undefined
+                          return (
+                            <div key={index} className="flex items-center gap-2">
+                              {classical && (
+                                <Select
+                                  size="sm"
+                                  className="w-40 shrink-0"
+                                  aria-label={`规则 ${index + 1} 类型`}
+                                  selectedKeys={[classical.type]}
+                                  disallowEmptySelection
+                                  onSelectionChange={(keys) => {
+                                    const ruleType = String(Array.from(keys)[0] || classical.type)
+                                    setPayload((current) =>
+                                      current.map((item, itemIndex) =>
+                                        itemIndex === index
+                                          ? `${ruleType},${classical.value}`
+                                          : item
+                                      )
+                                    )
+                                  }}
+                                >
+                                  {[...new Set([...classicalRuleTypes, classical.type])].map(
+                                    (ruleType) => (
+                                      <SelectItem key={ruleType}>{ruleType}</SelectItem>
+                                    )
+                                  )}
+                                </Select>
+                              )}
+                              <Input
+                                size="sm"
+                                className="font-mono"
+                                aria-label={`规则 ${index + 1} 内容`}
+                                value={classical?.value ?? rule}
+                                onValueChange={(value) =>
+                                  setPayload((current) =>
+                                    current.map((item, itemIndex) =>
+                                      itemIndex === index
+                                        ? classical
+                                          ? `${classical.type},${value}`
+                                          : value
+                                        : item
+                                    )
+                                  )
+                                }
+                              />
+                              <Button
+                                size="sm"
+                                isIconOnly
+                                variant="light"
+                                color="danger"
+                                aria-label={`删除规则 ${index + 1}`}
+                                onPress={() =>
+                                  setPayload((current) => current.filter((_, i) => i !== index))
+                                }
+                              >
+                                <MdDeleteOutline className="text-lg" />
+                              </Button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
                   )}
                 </div>
               </Tab>
